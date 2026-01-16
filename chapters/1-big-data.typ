@@ -196,132 +196,175 @@ All the system have to do is to recompute only the computation done by the _sing
   Because of that, the map nodes should store the _temporary_ results of the map phase until the _whole_ computation is over.
 ]
 
-#todo
+=== Example: Matrix Vector Multiplication
 
-=== Example: Product between matrix and vector
+Given:
+- a matrix $A = [a_(i j)]_(m times m)$ too big to be storable
+- a vector $underline(v) = [v_j]_m$ storable in RAM (of each single computer involved)
+- the resulting vector $A underline(v) = p, quad p_j = sum_j a_(i j) v_j$
 
-- $A = [a_(i j)]_(m times m)$ matrix, too big to be storable
-- $underline(v) = [v_j]_m$ vector, storable in RAM (of each single computer involved)
-- $A underline(v) = p$
-- $p_j = sum_j a_(i j) v_j$
+We need to _store_ and _process_ the data in a _distributed file system_ using _MapReduce_:
+- Organize:\
+  Each entry $(i, j, a_(i j))$ (row index, column index, entry value) should be converted to a pair.
+  We can simply use $i$ as the key and $(j, a_(i j))$ as the value, forming the pair $(i, (j, a_(i j)))$.
+- Map:\
+  For each entry we need multiplicate its value by the corresponding element of the vector:
+  $(i, j, a_(i j)) --> #rect[MAP] --> (i, a_(i j) v_j)$.
+  #note[
+    How can we apply that transormation if we don't have $v$ in the pair to map?
+    We said that $v$ can be stored in RAM, so we can just fetch its value from there.
+  ]
+- Shuffle:\
+  Each key-value is shuffled based on the key, in this case $i$, and each reduce node receives: $ (i, underbrace([a_(i 1) v_1, a_(i 2) v_2, ..., a_(i n) v_n], S)) $
+- Reduce:\
+  Just sum the values associated with each row $i$.
+  These values are the elements of the final vector:
+  $ (i, underbrace([a_(i 1) v_1, a_(i 2) v_2, ..., a_(i n) v_n], S)) --> #rect[REDUCE] --> (i, sum S) $
 
-With $m = 10^9$, we have $10^18$ entries, each one of $8$ bytes, so that cannot fit in memory.
+#example[
+  With $m = 10^9$, the matrix would be too big to be storable, while the vector is around $8"GB"$, so storable even in RAM.
+]
 
-We need to store the data in a distributed file system:
-- organize the data:
-  Convert each entry into a triple $(i, j, a_(i j))$, row index, column index, entry value.
-  We can assume $i$ is the key and $(j, a_(i j))$ the value, we dont care
-- map:
-  Apply the transformation: $(i, j, a_(i j)) -> (i, a_(i j) v_j)$.
-  How can we apply that if we don't have $v$ in the pair?
-  We said that $v$ can be stored in RAM, so we can just fetch its value from there.
-- shuffling:
-  Each key-value is sent based on $i$, and each reduce node receives: $(i, underbrace([a_(i 1) v_1, a_(i 2) v_2, ...], S))$
-- reduce:
-  Just sum the values: $(i, sum S) = (i, p_i)$
+=== Example: Matrix Vector Multiplication V2
 
-This approach works for every matrix, even if the matrix is very small, but the overhead is obviously not worth it.
+Same example as before, but not even the vector $underline(v)$ is NOT storable in memory.
+The assumption is that only *half* of $underline(v)$ is storable in RAM.
 
-=== Example: Product between matrix and vector 2
-
-Same example as before, but not even the vector $underline(v)$ is storable in memory.
-The assumption is that *half* of $underline(v)$ is storable in RAM.
-The two halves are $v_u$ and $v_l$.
-Because we split the vector, let's also split the matrix into $A_L$ and $A_R$.
-
-The halves are compatible, as the numbers of columns of the half matrix are the same of the rows of the half vector (the vector is vertical).
-
+To leverage a mathematical property we split both the vector into upper $v_u$ and lower $v_l$ and the matrix into left $A_L$ and right $A_R$.
+The halves are compatible, as the numbers of columns of the half matrix are the same of the rows of the half vector _(the vector is the mathematical object, so represented vertically)_.
+The final product is the *sum* of the multiplication of the two halves *indepently*:
 $ [A_L | A_R] dot [underline(v)_u / underline(v)_l] = A_L underline(v)_u + A_R underline(v)_l $
 
-Then we only need to expand up the *map* part, the reduce part can be left untouched.
-The reduce sums up by row number, but both parts of the matrix (left and right) keep the line number untouched, so it works.
+Then we can use the same approach as before.
+
+#note[
+  This approach can be generalized: the matrix and the vector can be split into $n$ components until a single component of the vector can fit in main memory.
+]
 
 === Example: Relational Algebra
 
-Concept of relational algebra:
-- Relation $R(A, B) subset A times B$: an SQL table
-- Attributes $A, B$: columnds of a SQL table
-- Row of a SQL table: $(a, b) in R$
+Concepts of relational algebra:
+- SQL table (relation): $R(A, B) subset A times B$
+- Columns of a SQL table (attributes): $A, B$
+- Row of a SQL table (tuples): $(a, b) in R$
 
 Operations of relational algebra:
-- Selection: $sigma_(c)(R) -> R$: filtering the rows of the table based on some criterion
-- Projection: $pi_(A, B, ...)(R) -> R$: filtering the columns of the table
-- Union: _same as set theory_
-- Difference: _same as set theory_
-- Intersection: _same as set theory_
-- Join
-- Grouping
+/ Selection: filtering the rows of the relation $R$ based on some criterion $c$
+  $ sigma_(c)(R) -> R $
+/ Projection: filtering the columns $A, B$ of the relation $R$
+  $ pi_(A, B)(R) -> R $
+/ Union: combining two relations $R$ and $S$ with the same schema, resulting in all tuples from both
+  $ t in R union S quad "iff" t in R or t in S $
+/ Difference: tuples in relation $R$ that are not in relation $S$ (same schema)
+  $ t in R \\ S quad "iff" t in R and t in.not S $
+/ Intersection: tuples that appear in both relations $R$ and $S$ (same schema)
+  $ t in R inter S quad "iff" t in R and t in S $
+/ Join: combining two relations $R(A, B)$ and $S(B, C)$ on common attributes
+  $ R join S -> (a, b, c) quad "where" (a, b) in R and (b, c) in S $
+/ Grouping/Aggregation: partitioning relation $R(A, B)$ by attribute $A$ and aggregating values of $B$
+  $ gamma_(A, theta(B))(R) -> (a, theta(b_1, ..., b_m)) $
 
-If the relation is too big, then we can't use a traditional DBMS, but we can use MapReduce:
-- Selection:\
-  $t in R -> "MAP" -> cases((t,t) &"if" c(t) = T, emptyset &"otherwise")$\
-  $(t, t) -> "REDUCE" -> (t, t)$
+If the relation is too big, then we can't use a traditional DBMS, but we can use _MapReduce_.
+
+#note[
+  All the results from Map and Reduce are a pair $(t,t)$ even if not additional information is needed because we are forced to adhere to the key-value format.
+]
+
+/ Selection $sigma_c (R)$: the map job filters the data, while the reduce step simply returns the data as it is
+  $
+    t in R -> #rect[MAP] -> cases(
+      (t,t) quad & "if" c(t) = "True",
+      emptyset quad & "otherwise"
+    )
+  $
+  $ (t, [t, ..., t]) -> #rect[REDUCE] -> (t, t) $
+
   #note[
-    All the results from Map and Reduce are a pair $(t,t)$ because we are forced to generate a key-value pair, so we just make up the other element of the pair.
+    Multiple values with the same key $t$ are generated only when multiple rows with the same exact content exists (no primary key exists in the table).
   ]
-- Projection:\
-  $t -> "MAP" -> (t', t')$\
-  $(t', [(t', ..., t')]) -> "REDUCE" -> (t', t')$
-- Union: #todo
-// TODO: from book
-- Difference:
-  $ R, S quad t in R \\ S quad "iff" t in R and t in.not S $
-  - map phase:
-    #informally[
-      Until now, we used the same map function for all the pairs.
-      In this example, we need to apply a different map function for the pairs of R and the pairs of S.
 
-      We differentiate the tuples that comes from R and the tuples that comes from S.
-      To do that we add an identifier that identifies the relation (not the relation itself)!
-    ]
-    $ forall t in R #rect[$"MAP"_R$] --> (t, \'R\') $
-    $ forall t in S #rect[$"MAP"_S$] --> (t, \'S\') $
-  - reduce phase:
-    $ (t, ['R']) --> #rect[REDUCE] --> (t, t) $
-    $ (t, ['R', 'S']) --> #rect[REDUCE] --> emptyset $
-    $ (t, ['S']) --> #rect[REDUCE] --> emptyset $
-- Grouping/Aggregation:
-  $ R(A, B) quad gamma_(A, theta(B)) $
-  - map phase
-    $ forall (a, b) in R --> #rect[MAP] --> (a, b) $
-  - reduce phase
-    $ (a, [b_1, ..., b_m]) --> #rect[REDUCE] --> (a, omega(b_1, ..., b_m)) $
-- Join
-  $ R(A, B) join S(B, C) in.rev (a, b, c) quad "iif" (a, b) in R and (b, c) in S $
-  - map phase
-    $ forall (a, b) in R --> #rect[$"MAP"_R$] --> (b, a) $
-    $ forall (b, c) in S --> #rect[$"MAP"_S$] --> (b, c) $
-  - reduce phase
-    $ (b, [a_1, ..., a_m, c_1, ..., c_n]) $
-    #warning[
-      That doesn't work as the values are NOT ordered, so we can't know if the values comes from R or S.
-      Moreover, we can't match values to generate the resulting triple.
-    ]
-  - map phase
-    $ forall (a, b) in R --> #rect[$"MAP"_R$] --> (b, (a, \'R\')) $
-    $ forall (b, c) in S --> #rect[$"MAP"_S$] --> (b, (c, \'S\')) $
-  - reduce phase
-    $ (b, [(a_1, \'R\'), (c_8, \'S\'), (a_3, \'R\') ...]) $
-    The reduce operator sorts the values based on the second element of the pair, so that we have all the R before all the S
-    #note[
-      One of these pairs is generated for each different value of $b$.
-    ]
+/ Projection $pi_(A,B) (R)$: the map job filters the columns, while the reduce step returns the data as it is
+  $
+    t in R -> #rect[MAP] -> (t', t')
+  $
+  $ (t', [t', ..., t']) -> #rect[REDUCE] -> (t', t') $
+  #note[
+    The map function extracts only the requested attributes $A, B$ from tuple $t$, producing $t'$.
+  ]
+
+/ Union $R union S$: multiple map functions exists, one for the relation $R$ and one for relation $S$. Both map functions output tuples that gets shuffled to reduce functions that outputs them
+  $ t in R -> #rect[MAP] -> (t, t) $
+  $ t in S -> #rect[MAP] -> (t, t) $
+  $ (t, [t, ..., t]) -> #rect[REDUCE] -> (t, t) $
+
+/ Difference $R \\ S$:
+  we need to differentiate the tuples that comes from R and the tuples that comes from S.
+  To do that we add an identifier ($\'R\'$ or $\'S\'$) that identifies the relation (not the whole relation itself!).
+  #informally[
+    Until now, we used the same map function for all the pairs.
+    In difference, we need to apply a different map function for the pairs of R and the pairs of S.
+  ]
+  $ forall t in R --> #rect[$"MAP"_R$] --> (t, \'R\') $
+  $ forall t in S --> #rect[$"MAP"_S$] --> (t, \'S\') $
+
+  Then the reduce step outputs only pairs that are only in $R$:
+  $ (t, [\'R\']) --> #rect[REDUCE] --> (t, t) $
+  $ (t, [\'R\', \'S\']) --> #rect[REDUCE] --> emptyset $
+  $ (t, [\'S\']) --> #rect[REDUCE] --> emptyset $
+
+/ Grouping/Aggregation $gamma_(A, theta(B))(R)$: the attributes are grouped on attribute $A$ and aggregated on $B$.
+  The attributes with the same key $a$ are shuffled to the same node, so the aggregation can be performed.
+  $ forall (a, b) in R --> #rect[MAP] --> (a, b) $
+  $ (a, [b_1, ..., b_m]) --> #rect[REDUCE] --> (a, theta(b_1, ..., b_m)) $
+
+/ Join $R(A, B) join S(B, C)$: two relations should share an attribute to generate tuples $(a, b, c)$.
+
+  First let's start with an approach that *does NOT work*:
+  the idea is to use the common attribute as the key, so that will be sent to the same node:
+  $ forall (a, b) in R --> #rect[$"MAP"_R$] --> (b, a) $
+  $ forall (b, c) in S --> #rect[$"MAP"_S$] --> (b, c) $
+
+  Then we should simply be able to construct the resulting tuples:
+  $ (b, [a_1, ..., a_m, c_1, ..., c_n]) --> #rect[REDUCE] --> (a, b, c) forall a forall c $
+
+  #warning[
+    But that does not work as values received by the reduce step are not ordered:
+    $ ("key", [5, 7, 9, 1, 3, 2]) $
+
+    We cannot differentiate which values comes from $A$ and which from $C$, so that approach does NOT work.
+  ]
+
+  So we also need to specify the relation the values come from:
+  $ forall (a, b) in R --> #rect[$"MAP"_R$] --> (b, (a, \'R\')) $
+  $ forall (b, c) in S --> #rect[$"MAP"_S$] --> (b, (c, \'S\')) $
+
+  The reduce step can then sort on the second element of each pair, so that all \'R\' come before each \'S\' and then generate the result.
+
+  $ (b, [(a_1, \'R\'), (c_8, \'S\'), (a_3, \'R\'), ...]) --> #rect[REDUCE] --> (a, b, c) forall a forall c $
 
 === Example: Matrix Matrix Multiplication
 
-Generalization: we can use a join to multiply two matrices
+The same approach can be used to perform a matrix-matrix multiplication.
 
-$ A_(m times n) quad B_(n, o) quad P = A dot B quad P_(i j) = sum_(k=1)^n a_(i k) b_(k j) $
+Given two matrices with one commond dimension $A_(m times n), B_(n times o)$, the resulting product $P$ will be:
+$ P = A dot B, quad P_(i j) sum_(k=1)^n a_(i k) b_(k j) $
+
+We can approach this problem translating this into a _natural join_, with the common dimension as the _common attribute_ on which to join.
+Each matrix can be seen as tuples of the form $("row", "column", "value")$ and the resulting matrix will be the join:
 $ A(I, K, V) in.rev (i, k, a_(i k)) $
 $ B(K, J, W) in.rev (k, j, b_(k j)) $
-$ A join B in.rev (i, j, j, a_(i k) b_(k j)) $
+$ A join B in.rev (i, j, a_(i k) b_(k j)) $
 
-Map
-$ forall (i, k, a_(i k)) in A --> #rect[$"MAP"_A$] --> (K, (i, a_(i k), \'A\')) $
-$ forall (k, j, b_(k j)) in B --> #rect[$"MAP"_B$] --> (K, (j, b_(k j), \'B\')) $
+In a matrix-matrix multiplication, the elements of the _rows_ of $A$ should be multiplied with the elements of the _columns_ of $B$, so we use this as key of the shuffling:
+$ forall (i, k, a_(i k)) in A --> #rect[$"MAP"_A$] --> (k, (i, a_(i k), \'A\')) $
+$ forall (k, j, b_(k j)) in B --> #rect[$"MAP"_B$] --> (k, (j, b_(k j), \'B\')) $
+
+#todo
 
 Reduce
-$ (k, [(1, a_(1 k), \'A\'), ..., (m, a_(m k), \'A\'), (1, b_(k 1), \'B\'), ..., (o, b_(k o), \'B\')]) $
+$
+  (k, [(1, a_(1 k), \'A\'), ..., (m, a_(m k), \'A\'), (1, b_(k 1), \'B\'), ..., (o, b_(k o), \'B\')]) --> #rect[REDUCE] --> ((i, j), a_(i k) b_(k j)) forall i forall j
+$
 
 #warning[
   Again, the reduce will not reduce these elements sorted, we just write them sorted for notation.
