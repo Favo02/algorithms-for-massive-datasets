@@ -5,7 +5,7 @@
   subtitle: "University of Milan - Master's Degree in Computer Science",
   authors: (
     ("Luca Favini", "Favo02"),
-    ("Giacomo Comitani", "comitanigiacomo"),
+    ("Giacomo Comitani Culo", "comitanigiacomo"),
   ),
   repo-url: "https://github.com/Favo02/algorithms-for-massive-datasets",
   license: "CC-BY-4.0",
