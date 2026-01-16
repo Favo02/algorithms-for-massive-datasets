@@ -1,137 +1,202 @@
-= Big Data: HDFS, MapReduce
+#import "../template.typ": *
 
-What is big data?
-Something that worked with a "normal" dataset, that doesnt work anymore.
+= HDFS and MapReduce
 
-It depends on the context:
-- a normal person can't handle more than thousant records (e.g. in an excel sheet)
-- a computer scientist can manage a dataset that can fit in main memory (GB)
-- even bigger: a dataset that does not even fit in the disk (TB)
+This course in pretty much about *big data*.
+But what is big data?
+It depends on the context.
 
-Increasing the power/memory of a computer *doesnt* scale *linearly*:
-1000 TB computer != one thousant 1TB computers.
+#example[
+  - A _normal person_ can't handle more than some thousants records (e.g. in an excel sheet)
+  - Classic _computation_ can't manage a dataset that doesn't fit in _main memory_ (GB)
+  - Or even bigger: a dataset that does not even fit in the _disk_ (TB)
+]
 
-Nevertheless, this if the single computer fails, everything crumbles.
+In general, we talk about *big data* when something that worked with a "normal" dataset, that doesn't work anymore.
 
-It leverages the power of *distributed computing*, that way increasing the power/memory scales *linearly*.
-We can use commodity hardware.
+#note[
+  We will work with dataset tipically divided into "can/can't fit in *main memory* (RAM)" and "can/can't fint in *disk*".
+]
 
+We could think of buying more _powerful_ hardware to manage this data.
+That does *not* work: increasing the power/memory of a computer *doesn't* scale *linearly*:
+$ "price for 1x" 1000"TB computer" != "price for 1000x" 1"TB computer" $
+
+Another huge implication is that if the single computer *fails*, everything crumbles.
+
+== Distributed Computing
+
+The solution is to leverage the power of *distributed computing*, that way increasing the power/memory scales *linearly*.
 We have two main things to do:
 - storage of the dataset
-- processing
+- processing of data
 
-== Storage
+== Storage: Hadoop Distributed File System (HDFS)
 
-HDFS (Hadoop Distributed File System), an open source version of GFS (Google File System).
+To store the data, we can use a distributed file system, where files are distributed on different computers, scattered around a network.
+One implementation of that idea is *HDFS* (Hadoop Distributed File System), an open source version of _GFS_ (Google File System).
 
-What architecture for the network? We need a network to connect our computational power which is distributed between computers.
+#example[
+  We have some _racks_, each rack composed of 20 full computers (_blades_).
+  These racks are phisically in different locations (even different cities or countries).
 
-We have some racks with 20 computers each.
-Each rack has internal Gbit network.
-Racks are interconnected by regular internet facility.
+  The computers in a single rack are connected with a _fast connection_ (Gbit network), while the racks are connected using standard _internet facility_ (slower).
+]
 
-What about damages?
-- hardware failure
-- network failure (the computer is fine, but inaccessible to the other ones)
+In a traditional file system, each file is *not* stored in a _contiguos_ part of memory, it is divided into *blocks* (of around 1KB) and then stored around the memory.
+There is an external data structure that stores how these files are splitted and where each block is.
 
-We can prevent/fix that using redudancy.
+We can use the same idea for a distributed file system, dividing each file in *chunks* (of around 64MB) and distribute them over *multiple computers*.
+We also need a (central) structure to manage for each file where each chunk is.
 
-In a traditional file system, each file is not store in a contiguos part of memroy, it is divided into blocks (of around 1KB) and then stored around the memory.
-There should be an external data structure that manages how these files are splitted.
+What about *damages*? Two main categories exists:
+- _hardware_ failures (the computer phisically breaks down)
+- _network_ failures (the computer is fine, but inaccessible to the other ones)
 
-We can use the same idea for a distributed file system, dividing each file in chunks (of around 64MB).
-We also need a structure to manage for each file where each chunk is.
-
-These chunks are also duplicated, each one called replica.
-
-After a damage, the system will try to restore the operational amount of replicas, so that at all times, we have a constant amount of replicas.
-Meaning that we are at all times pretty sure that a catastrofe cannot happend (3 computers breaking at the same time is really rare).
-
-How can we know that there were a damage?
-The central controller sends heartbits/heartbeats which expects a response.
-If $n$ heartbits are lost, then damage is assumed.
-
+We can prevent/fix these issues using *redudancy*, each file chunk is duplicated multiple times, each one called *replica*.
 Typically we have $3$ replicas, two in the same rack and one in a far away rack.
 
-These files systems are immutable: the files are stored and then read as they are, they cannot be updated like we update a normal file.
+#note[
+  An important property is that, after a problem, the system will restore the *operational amount* of replicas.
+  Meaning that we are at all times pretty sure that completely losing a file is really _unlikely_ (multiple computers should break down at the same time).
+]
 
-== Processing (MapReduce)
+How does the system _detects_ issues and failures?
+The central controller sends *heartbeats* to all computers, which expects a response.
+If $n$ consecutive heartbits are lost, then damage is assumed.
 
-We can do two things:
-- data -> computation (we move data to a dedicated cpu that processes data)
-- computation -> data (we compute the data where is stored, with the cpu of the correspondent computer)
+These files systems are *immutable*: the files are stored and then read as they are, they cannot be updated like we update a normal file.
+_Doing something_ with these files is processing them, that is reading them and generating a result (another file), *without* modifying them.
 
-The implemented version is computation brought to data, the computation is distributed too, there isnt a single processing center.
+#informally[
+  Recap:
+  - files are divided in chunks of \~$64"MB"$
+  - chunks are scattered around multiple computers
+  - chunks are replicated to prevent failures
+  - the system will restore the operational amount of replicas after a failure
+  - files are immutable
+]
 
-// #example[
-We have a text and we want to compute the frequency of each word in this text.
-// ]
+== Processing: MapReduce
 
-This is implemented using the map-reduce paradigm, which is typically made in 3 steps:
-- organize the data in key-value pairs
-- map step
-- (combiner)
-- (shuffling)
-- reduce step
+Processing distributed files means read them, compute _something_ and generate a result.
+The files are not modified and the result is *another file*, stored indepently in the distributed file system.
 
-=== Organize the data in key-value pairs
+Two approaches arise:
+- bring the _data_ to the _computation_: the data is moved to a dedicated node, where all the processing happens
+- bring the _computation_ to the _data_: the computation is done by the CPU of the computer that stores the data (the data is not transferred through the network)
 
-Everything in a map-reduce, should be organized as a key-value pairs (this works as tuples, not a dictionary, multiple values for the same key are allowed!).
+Of course, moving a huge amount is data brings a big overhead, so the second approach is chosen: the computations is done by the *distributed CPUs* over the whole network.
 
-Even the initial data should be in a key-value state.
-This requisiste is not important right now, it will be become important later.
+This is implemented using the *MapReduce* paradigm, which is typically made of multiple steps:
+- *organize*: the data is organized into key-value pairs
+- *map*: a mapping function is applied to the local data
+- *combine*: the mapped data is combined to optimize the shuffling phase
+- *shuffle*: the results of the mapping phase are redistributed over the network
+- *reduce*: the groups of mapped data are processed to final result
 
-In our example:
-Right now we simply implicitly associate data with a key, e.g. each line number with the text contained in that line.
+#example[
+  From now on, we use a simple example for the paradigm: given a (huge) _text_, we want to compute the _frequency_ of each word in the text.
+]
 
-We have to make sure that no pair starts in a chunk and ends in another chunk!
+=== Organize
 
-=== Map (with Combiner)
+All the data managed by MapReduce, should be organized as a key-value *pairs*.
 
-Receive all the key-value pairs and process them using a *function*.
-This function receives ONE key-value pair and returns ZERO o MORE key-value pairs.
+#warning[
+  These key-value pairs behave as a collection of *tuples*, *not* as a *dictionary*.
+  Multiple pairs with the _same key_ are allowed.
+]
 
-In our example: split the string into words $w$ and for each work output a pair $(w, 1)$
+The first step of the processing is to organize the data into key-value pairs, so that even the initial data is in that format.
 
-These produced key-values are temporarily stored in the filesystem of the local machine (the one which does the computation).
+#note[
+  _Right now_, we will _ignore_ this requirement but it will become important later on with the course.
 
-This phase can also include a combiner, that already combines the multiple couples into a single couple $(w,1), (w,1), (z,1) -> (w,2), (z,1)$, to make shuffling phase lighter.
+  _Spoiler: we will be able to concatenate multiple MapReduce jobs, so the initial data is the output of another step: key-values pairs._
+]
 
-=== Shuffling
+We have to make sure that no pair starts in a chunk and ends in *another* chunk!
 
-Once all map phases are finished, all key-values are processed and each key-value is sent to a node.
-All pairs with the same key should be sent to the same node.
-To achieve that we use an hash function (shared by all computers): functions that evenly distributes inputs to outputs (buckets, tipically integers).
-The hash functions are fast and act as load balancers (as their outputs should be randomly distributed).
+=== Map
+
+A *map* function is applied to _each_ key-value pair indepently.
+The function receives _one_ key-value pair and returns _zero, one or more_ key-value pairs:
+$ (k, v) --> #rect("MAP") --> (k, v)^* $
+
+Because of the _indepented_ nature of each pair, this computation can happen anywhere.
+In HDFS, the map step is performed by the computer where the chunk is stored.
+
+#example[
+  The map function will split the string into words and for each word $w$, it outputs a pair $(w, 1)$.
+]
+
+The result of the map phase (the produces key-values) are temporarily stored in the *local machine* (the one which does the computation).
+
+=== Combine
+
+The map phase can also include a combiner: an optimization step that merges multiple key-value pairs, to reduce the number of pairs handled by the shuffling phase (the next one).
+
+#warning[
+  This still happens in the *local* machine, so only the pairs of a single *chunk* are considered.
+]
+
+#example[
+  Multiple pairs with the same key are merged into one single pair with summed value: $(w,1), (w,1), (z,1) -> (w,2), (z,1)$.
+]
+
+=== Shuffle
+
+After the map function is applied, each generated pair-values are *sent* to _nodes around the network_ to perform the next step of the processing: reduction.
+
+Pairs with the *same key* are sent to the *same node*.
+
+This is achieved by using a common *hash function* (the same for all computers):
+$ h : underbrace(K, "universe of keys") -> underbrace(m subset bb(N), "number of nodes") $
+
+This function _evenly_ distributes the keys across all nodes of the network and act as *load balancers*.
 That process is called *shuffling*.
-
-In out example: the inputs are the possible keys (workds), the outputs are one of our computers (integer).
 
 === Reduce
 
-The reduce function receives a key with an array of values as input and outputs ZERO or MORE key-value pairs.
+The shuffled key-value pairs are then processed by a *reduce* function.
+The reduce function receives a pair formed by a _single key and multiple values_ and returns _zero, one or more_ key-value pairs:
+$ (k, underbrace([v_1, v_2, ..., v_n], S)) --> #rect[REDUCE] --> (k, v)^* $
 
-In our example: the reduce receives a single word with multiple ones.
-The length (or sum) of the array is the frequency of that word in the text.
-Then function outputs a single pair with (word, frequency).
+#note[
+  All the key-value pairs with the *same key* are processed by the *same node*, so we can view all the values as an array $S$ associated with its key $k$ using the notation $(k, [v_1, v_2, ..., v_n])$.
+]
+
+#warning[
+  A single node can (very likely will) handle *multiple* keys.
+]
+
+#example[
+  The reduce function receives the key along with all its values $S$.
+  The sum of the values $S$ is the frequency of the word, so it outputs $(k, sum S)$.
+]
 
 The result is stored in a new file in the distributed file system.
 
-The reduce should be indepented of the order of the pairs received, so the operation should be commutative and associative.
+#warning[
+  We cannot make assumptions on the order of the values, as mapping and shuffling phase of each pair can happend in different computers.
 
-Typically, one computer could reduce more than one key, because likely the number of words is much greather than the number of computers.
+  Because of that, the operation applied by the reduce function should be *commutative* and *associative*.
+]
 
-=== Example
+=== Errors during Computation
 
-// TODO: drawing of the example
+What happens if a *failure* (hardware or network) occours during the computation?
+All the system have to do is to recompute only the computation done by the _single node_ that _failed_, NOT the whole computation.
 
-=== Errors during computation
+#note[
+  If a _map_ job fails, then it can simply be re-run on another node (with the same chunk).
 
-If an hardware or network error happens during the computation?
-All I have to dois recompute only the computation done by that single node, NOT the whole computation.
+  If a _reduce_ job fails, the system should ask all the node that performed a map job to re-shuffle the pairs.
+  Because of that, the map nodes should store the _temporary_ results of the map phase until the _whole_ computation is over.
+]
 
-Also this phase has a master controller that manages the whole computation.
-In case of errors, this master controller, assigns the failed job to another node (nodes can be both computation-only or both storage+computation).
+#todo
 
 === Example: Product between matrix and vector
 
