@@ -21,13 +21,13 @@ jobs:
 
     - name: Compile Typst document
       run: |
-        typst compile main.typ template.pdf
+        typst compile main.typ algorithms-for-massive-datasets.pdf
 
     - name: Upload PDF as artifact
       uses: actions/upload-artifact@v4
       with:
-        name: template-pdf-release
-        path: template.pdf
+        name: algorithms-for-massive-datasets-pdf-release
+        path: algorithms-for-massive-datasets.pdf
         retention-days: 90
 
     - name: Get current date
@@ -40,7 +40,7 @@ jobs:
         tag_name: release-${{ github.sha }}
         name: Compiled PDF ${{ steps.date.outputs.date }} (${{ github.sha }})
         body: |
-          🎓 **Template - PDF ${{ steps.date.outputs.date }} (${{ github.sha }})**
+          🎓 **Algorithms for Massive Datasets - PDF ${{ steps.date.outputs.date }} (${{ github.sha }})**
 
           Automated release created from main branch with the latest version of the course notes.
 
@@ -49,7 +49,7 @@ jobs:
           - Build date: ${{ steps.date.outputs.date }}
           - PDF compiled with latest Typst version
 
-          **Download:** The PDF is attached to this release as `template.pdf`
-        files: template.pdf
+          **Download:** The PDF is attached to this release as `algorithms-for-massive-datasets.pdf`
+        files: algorithms-for-massive-datasets.pdf
         draft: false
         prerelease: false

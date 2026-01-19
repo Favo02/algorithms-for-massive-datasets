@@ -26,11 +26,11 @@ jobs:
 
     - name: Compile Typst document
       run: |
-        typst compile main.typ template-preview.pdf
+        typst compile main.typ algorithms-for-massive-datasets-preview.pdf
 
     - name: Upload PDF as artifact
       uses: actions/upload-artifact@v4
       with:
         name: pr-${{ github.event.pull_request.number }}-preview
-        path: template-preview.pdf
+        path: algorithms-for-massive-datasets-preview.pdf
         retention-days: 30
