@@ -346,69 +346,86 @@ If the relation is too big, then we can't use a traditional DBMS, but we can use
 
 The same approach can be used to perform a matrix-matrix multiplication.
 
-Given two matrices with one commond dimension $A_(m times n), B_(n times o)$, the resulting product $P$ will be:
-$ P = A dot B, quad P_(i j) sum_(k=1)^n a_(i k) b_(k j) $
+Given two matrices with one commond dimension $A_(m times n), B_(n times o)$, the resulting matrix $P$ will be:
+$ P = A dot B, quad P_(i j) = sum_(k=1)^n a_(i k) b_(k j) $
 
-We can approach this problem translating this into a _natural join_, with the common dimension as the _common attribute_ on which to join.
-Each matrix can be seen as tuples of the form $("row", "column", "value")$ and the resulting matrix will be the join:
+We can transform this problem into a _natural join_, treating the two matrices as _tables_ with three attributes $("row", "column", "value")$ with the common dimension as the _common attribute_ on which to join:
 $ A(I, K, V) in.rev (i, k, a_(i k)) $
 $ B(K, J, W) in.rev (k, j, b_(k j)) $
-$ A join B in.rev (i, j, a_(i k) b_(k j)) $
 
-In a matrix-matrix multiplication, the elements of the _rows_ of $A$ should be multiplied with the elements of the _columns_ of $B$, so we use this as key of the shuffling:
+The join operation will return all the tuples with a common $k$:
+$ A join B in.rev (k, i, j, a_(i k), b_(k j)) $
+
+#informally[
+  The idea is to match rows with columns of the two matrices ($k$ is rows in a table and columns in the other).
+]
+
+To perform that we need to shuffle on key $k$ and keep track of which table each entry comes from:
 $ forall (i, k, a_(i k)) in A --> #rect[$"MAP"_A$] --> (k, (i, a_(i k), \'A\')) $
 $ forall (k, j, b_(k j)) in B --> #rect[$"MAP"_B$] --> (k, (j, b_(k j), \'B\')) $
 
-#todo
-
-Reduce
+Then we can multiply $a_(i k)$ entries with $b_(k j)$ entries to obtain:
 $
   (k, [(1, a_(1 k), \'A\'), ..., (m, a_(m k), \'A\'), (1, b_(k 1), \'B\'), ..., (o, b_(k o), \'B\')]) --> #rect[REDUCE] --> ((i, j), a_(i k) b_(k j)) forall i forall j
 $
 
 #warning[
-  Again, the reduce will not reduce these elements sorted, we just write them sorted for notation.
-
-  The reduce part will use the third and second element of the triple to *sort* them.
+  Again, the reduce will not receive these elements _sorted_, that's why we need the labels $\'A\', \'B\'$: to be able to sort them.
 ]
 
-We can see that result as a matrix: on the columns the (1, a1k, A) and on the rows (1, bk1, B)
+_Multiple_ tuples with the same $(i, j)$ will be generated: the multiplication is not over yet.
+These elements needs to be _summed up_ to obtain $P_(i j)$.
+We need another reduce phase, with a *different* key, so we need another *shuffling*.
+We can *concatenate* multiple MapReduce jobs.
 
-The reduce generates: $((i, j), a_(i k) b_(k j)) forall i forall j$
+#note[
+  That is the reason why even the initial data should be in key-value format.
+  With this constraint multiple MapReduce jobs can be concatenated.
+]
 
-But we are missing an important information: $k$!
-
-The idea is that we can concatenate multiple map-reduce jobs (thats why even the input should be in key-value format).
-
-In this case, we dont need to perform another map transormation, we just need to shuffle and reduce again.
+In this case, we don't need to perform any transformation, only to _shuffle_ data on $(i, j)$ key:
 $ ((i, j), a_(i k) b_(k j)) --> #rect[MAP2] --> ((i, j), a_(i k) b_(k j)) $
 
-$ ((i, j), [(a_(i 1) b_(k j), ..., )]) --> #rect[REDUCE] --> ((i, j), underbrace(sum(S), p_(i j))) $
+Then we can simply sum up the data with the same row and column to obtain each resulting matrix cell:
+$
+  ((i, j), underbrace([(a_(i 1) b_(1 j)), ..., (a_(i k) b_(k j))], S)) --> #rect[REDUCE2] --> ((i, j), underbrace(sum S, = P_(i j)))
+$
 
-This approach uses 2 MapReduce jobs.
+This approach uses *two* concatenated MapReduce jobs.
 
 === Example: Matrix Matrix Multiplication V2
 
-To use only one job we immediately try to use the final key: (i, j), but we don't have j.
-We know that j can range between $1$ and $o$, so we output one of these pairs for all possible value of $j$
-$ (i, k, a_(i k)) in A --> #rect[MAP A] --> ((i, j), (j, a_(i k), \'A\')) forall j = 1, ..., o $
+We can do better in terms of number of MapReduce jobs: using only one.
 
-Same thing for B:
-$ (k, j, b_(k j)) in B --> #rect[MAP B] --> ((i, j), (k, b_(k j), \'B\')) forall i = 1, ..., m $
+#informally[
+  The resulting entries will depend on the row and column $(i, j)$, so our map will definetely need to _shuffle_ on that key.
 
-Reduce (already sorted by $k$):
-$ (i, j) [(1, a_(i 1), \'A\'), ..., (n, a_(i n), \'A\'), (1, b_(1 j), \'B\', ..., (n, b_(n j), \'B\'))] $
+  But for each matrix we don't know one dimension, so we simply generate _all possible_ values of this unknown.
+]
 
-This new approach uses only one MapReduce job.
+We immediately try to generate pairs with $(i, j)$ as key.
+For matrix $A$ we don't know $j$, so we range all possible values in range $[1, o]$:
+$ (i, k, a_(i k)) in A --> #rect[$"MAP"_A$] --> ((i, j), (k, a_(i k), \'A\')) space forall j in [1, o] $
 
-Using one MapReduce job comes at a price: increasing (a lot) the quantity of mapped pairs that have to be sent over the network.
+Same thing for matrix $B$ in which we don't know $i$:
+$ (k, j, b_(k j)) in B --> #rect[$"MAP"_B$] --> ((i, j), (k, b_(k j), \'B\')) space forall i in [1, m] $
 
-Complexity: we never talked about complexity of these computations.
+Then the reduce function needs to match tuples from $\'A\'$ and from $\'B\'$ based on a common $k$.
+To achieve that the array can be _sorted_ with a _multiple key_ comparation, first on the label $\'A\'$ and $\'B\'$ and then on the values $k$.
+$
+  ((i, j), [(1, a_(i 1), \'A\'), ..., (n, a_(i n), \'A\'), (1, b_(1 j), \'B\'), ..., (n, b_(n j), \'B\')]) --> #rect[REDUCE] --> ((i, j), sum_(k=1)^n a_(i k) b_(k j))
+$
+
+This new approach uses only *one* MapReduce job, but the number of pairs sent across the network is _much bigger_ than before.
+
+#note[
+  We will analyze the complexity of these examples in the next section (#link-section(<communication-cost-model>)).
+]
+
+== Complexity: Communication Cost Model <communication-cost-model>
 
 It is very likely that the network overhead (the exchange of pairs during shuffling phase) dominates the computation.
 So we need to minimize the number of pairs generated by map phase (that are shuffled).
-
-= Complexity: Communication Cost Model
 
 When things are distributed, the most important complexity is space complexity.
 But even that is not the most important thing.
