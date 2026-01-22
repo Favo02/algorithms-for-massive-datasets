@@ -265,4 +265,190 @@ $ ... $
   Malevolent agents found another way.
 ]
 
-#text(size: 40pt)[SHE SAW HER DUCK]
+= Lecture 4
+
+PageRank can be generalized to rank anything that can be represented as a graph (any binary relation).
+
+"She saw her duck" has multiple meanings:
+- a woman saw the duck of another woman
+- a woman saw her own duck
+- a woman saw another woman ducking (abbassarsi)
+- a woman cut (saw) her own duck
+
+Even a simpler query like "Jaguar" has multiple meanings:
+- the animal
+- the car brand
+- the macos operating system version
+
+This is an obvious example that a query has multiple meanings.
+We need to tailor the search engine for each user.
+This means that every user needs a custom page rank instance.
+There are abount 1 billion users, so that is obviously not feasible.
+The obvious solution is to do some user clusterings.
+
+#nota[
+  Yahoo worked a little bit different that google: after the query there was also a taxonomy of categories (tree).
+  After selecting the leaf of a category, the results were displayed.
+]
+
+We focus on rather a low number of categories (sports, language, religion, ...): $16$.
+We can assign a category to each web page.
+
+We also know which category the user is interested in (even just by asking, or by more complex methods like social media posts/emails, ...).
+Each user is represented by a 16 bits number, each $1$ means the user in interested in that category (a bitmask).
+
+There are $2^16 = 65536$ groups of users with the same interests.
+
+PageRank worked in two main components: random surfing and teleportation.
+We can modify only the latter part: the teleportation teleports only to pages with category that the user is interested in.
+
+Formalization:
+
+Given a number, $S$ are the pages that are of interest to the categories:
+$ S = {"pages of interest"} $
+
+PageRank worked that way with random surfing + teleportation:
+$ underline(v)(t+1) = beta underline(v)(t) + (1-beta)[1/n]_n $
+
+We can only change the pribability:
+$
+  underline(v)(t+1) = beta underline(v)(t) + (1-beta)cancel([1/n]_n) \
+  underline(v)(t+1) = beta underline(v)(t) + (1-beta) underline(e)_S / (|S|)
+$
+
+$ underline(e)(s)_i = cases(1 "page" i "is of interest", 0 "otherwise") $
+
+== Fooling pageRank
+
+We are not web spammers.
+Our end is now the one of the bad guys: we want to raise the ranking of a page (we cannot touch how pagerank works).
+
+A page can be:
+- inaccessible: we have not access at all
+- accessible: the content can be controlled in part by us (like forums, social media, comments)
+- controlled: pages we own (we can modify them)
+
+We can then build a spam farm:
+- we have a taget page $t$
+- we have $m$ supporting pages
+
+The target page links to all and only the supporting pages.
+Each supporting page only links back to the target page.
+
+To make this farm effective, we also add links from accessible pages to target page.
+With this structure and selecting correctly supporting pages, the pagerank rank of page $t$ increases (a lot).
+
+$ y = "PR of" t $
+$ x = "PR from accessible pages" $
+#nota[
+  Accessible pages will have their PR score.
+  After subtracting taxation (teleportation), the rest will be redistributed evenly to the links (so also to our target page): $x$.
+]
+$
+  "PR of any supporting page" = (y overbrace(beta, "taxation")) / m + underbrace((1 - beta)(1/n), "incoming teleportation")
+$
+
+$
+  "PR of" t = underbrace(x, "accessible pages") + underbrace(m beta ((y beta) / m + (1-beta)(1/n)), "supporting pages") + underbrace((1-beta)(1/n), "incoming teleportation")
+$
+
+The incoming teleportation amount is negligible.
+This is still a positive quantity, so we will be understimating the PR of $t$.
+
+$
+            y & = x + beta^2 y + beta (1- beta) m/n \
+  (1-beta^2)y & = x + beta(1-beta) m/n \
+            y & = x / (1-beta^2) + beta/(1+beta) m/n
+$
+
+$beta$ is tipically $0.85$
+
+So the incoming PR from accessible pages $x$ is amplified by a $3.6$ factor!
+The important part is that, the second part is negligible because the fraction $m/n$ (our pages / total web pages) is really small.
+
+So PageRank is not safe.
+The good thing is that the pattern of the this farm is very easy to spot.
+We could simply ignore their PageRank score, but spammers would find another way to farm (with a slightly different architecture).
+
+So we instead modify the way PageRank works: *TrustRank*.
+The idea is to assign each page a safe score (which is not binary, but a spectrum) and then use it in mechanism like $S$ (teleportation only to safe page).
+
+The we compute PageRank $"PR"$ and TrustRank $"TR"$ and if their score is too different, then the page is not safe.
+
+== Link Analysis: Hyperlink Induced Topic Search (HITS)
+
+In page rank we decide if pages rank are important or not.
+
+Here, we categorize the pages in two big classes and we determine the importance in one class and then in the other class.
+
+The two classes are:
+- Hubs: repository of links to interesting pages (university page / wikipedia home)
+- Authorities: pages that speaks on a topic (page of this course / wikipedia page of a topic)
+
+A page should be either an hub or an authority.
+Each page has a degree of hubbiness and a degree of authoritativeness.
+
+A page is a good hub if links to good authorities.
+A page is a good authority if it is linkeed by good hubs.
+
+Also in this algorithm we have a never ending recursion.
+
+Formalization:
+/ Connection matrix: the representation of the graph
+  $ L = [l_(i j)]_(n times n) $
+  $ l_(i j) = cases(1 "if edge" i -> j, 0 "otherwise:" i arrow.not j) $
+
+We will have two vectors, one for hubs and one for authorities
+:
+$ underline(h), underline(a) $
+
+
+These are all the authorative nodes that are reachable from $i$:
+$ h_i = (L underline(a))_i = sum_j l_(i j) a_j = sum_(i -> j "exists") a_j $
+
+Same things (but inverted, so transposed) for authorities:
+$ a_i = (L^T underline(h))_i = sum_j l^T_(i j) h_j = sum_j l_(j i) h_j = sum_(j -> i "exists") h_j $
+
+So:
+$ underline(h) = L underline(a) $
+$ underline(a) = L^T underline(h) $
+
+So:
+$ underline(a) = L^T L underline(a) $
+$ underline(h) = L L^T underline(h) $
+
+To compute that we could use the same thing used for PageRank (a matrix multiplied by a vector), simply compyting the matrices $L L^T$ and $L^T L$.
+
+But these matrices are really sparse.
+
+#attenzione[
+  This approach will NOT converge, it will *diverge*.
+
+  Each component will increase.
+  So it will diverge to infinity.
+]
+
+The different thing is that in PageRank $underline(v)$ was always a probability distribution, while that doesnt hold there.
+We can impose that, normalizing:
+$ underline(h) = lambda L underline(a) $
+$ underline(a) = mu L^T underline(h) $
+
+== Implementation
+
+We will not use Hadoop (which offers both file system and computing with MapReduce), but a more modern version: Spark.
+
+#attenzione[
+  Spark does NOT offer a distrbuted file system, so the storage needs to be handled by another technology.
+]
+
+Resilient distributed data set (rdd): the files in spark are stored in that system, that gets processed but is not persistent (it will likely disappear after the machine shuts down), we need to save the result somewhere.
+
+- `spark.sparkContext`: context from where to start each action
+- `parallelize`: transform an object that lives in RAM to an object that lives inside spark
+- `textFile`: transform a file into a rdd
+- `collect`: bring the data from the rdd into the RAM of the driver (the machine that runs, not meant to handle big data)
+- `map`: exactly the map function in map reduce, applies a transformation
+- `flatMap`: exactly like map, but flatten it if its multi-dimensional
+- `take`: like collect, but instead of getting all the data, only selects as many random records as specified
+- `reduceByKey`: reduction like in functional prorgarmming (this should be commutative and associative). It does both shuffling and reducing. It works only if the working set its applied to is in pair format
+- `cache`: cache the rdd, e.g. keep it RAM instead of distributing over the whole system
