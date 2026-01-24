@@ -1,144 +1,241 @@
 #import "../template.typ": *
 
+#set math.equation(numbering: "(1.1)", supplement: "EQ")
+
 = Link Analysis: PageRank
 
-Problem that needs to be solved using distributed computing (and of course MapReduce).
+We analyze a _real world_ problem that requires the use of distributed computation (and thus MapReduce).
 
-Search engine: there is an enourmous amount of web pages, and no matter what query, multiple results match that query.
-Some results are more relevant, other less relevant, other not relevant at all.
-
+A *Search Engine*: given a _query_, it returns a list of _web pages_, sorted by _relevancy_.
+Given the enourmous amount of web pages, no matter the query, multiple results will match that query.
+Some results will be more relevant, other less relevant, and some even not relevant at all.
 The goal of the search engine is to list pages that are relevant first.
-This is done in an *endogenous* way: it is achieved by looking for information *inside* the pages themself.
 
-The first web engines worked taking terms from the query and returning all pages included that terms.
-This can be exploited by web spammers that included a lot of terms also not related to the actual page.
+/ First Approach\: Endogenous:
+  The relevance is determined by some information stored *inside* the pages themself, as metadata, tags or terms.
 
-To tackle this problem, we can use *exogenous* information (that lives outside the page itself).
-These external information are the links.
+  That was the idea implemented by _early web engines_, but consisted of a huge problem: it is easily exploitable.
+  *Web spammers* could simply include all the most searched terms in the page, even if completely _unrelated_ to the real content of the page, making the search engire return their page.
 
-A page is important if it is linked by an important page.
-To determine the importance of the other page we need to reapply the same process.
-This triggers a never ending recursion.
+/ Second Approach\: Exogenous:
+  To solve this problem, we can use information that lives *outside* the page itself: the *links* connecting the web pages.
 
-This can be represented by a graph with direct edges as links.
+  The revolutionary idea implemented by Google to determine the importance of a page is that a page is _important_ if it is *linked* by _another important_ page.
 
-There exist random surfers (a lot of them), that move randomly on the graph.
-These are initially distributed "evenly" these surfers.
+  To calculate the importance of that other page the same process needs to be _reapplied_.
+  This generates an _infinite recursion_.
 
-Initially the probability of a surfer of being in a node is $1/n$ for each node $n$.
+  #nota[
+    While this approach mostly solves the problem of web spammers, some other ways to manipulate the results have been invented (such as link spam).
+  ]
 
-At each time, each surfer select a random edge (a random link) and moves to the node (page) pointed by that link.
+We will focus on that second approach, the idea behind *PageRank* algorithm.
+Some formalization is needed.
 
-THe surfers are not anymore randomly distributed, the probability that a surfer is over a node have changed:
-$[2/12, 6/12, 4/12]$
+/ Web Graph: The web can be formalized as a _graph_, with pages as _nodes_ and links between them as _directed edges_.
 
-This process goes on indefinetely.
-
-The probabilities will converge, e.g. after 100 iterations the vector of probabilities do not change anymore (or change slightly).
-
-This can be applied back to the importance of a graph: the higher the probability is, the more important a page is.
-
-We need to convert this into a mathematical rigorous system so that we can proof things on it.
-
-/ Transition matrix $M$: columns: nodes as a source, rows: nodes as a destination. $0$ where no edge exists, $1/"outer degree"$ where exist (number of outgoing nodes from that node).
-  This is a *column-wise Stochastic* (c.w.s.) matrix:
-  - summing the column will sum up to $1$
-  - no negative entries
-
-/ Vector $underline(v)(t)$: Vector of the probabilities of the surfers in each node at time $t$.
-
-The matrix $M$ and vector $underline(v)$ are compatible for product.
-
-- $ v_(i)(0) = 1/n = bb(P)("in" i "at time" 0) $
-- $
-    v_(i)(t+1) = bb(P)("in" i "at time" t+1) \
-    = bb(P)(union.big ("in" j "at" t, "moving from" j "to" i)) \
-    = sum_j bb(P)(j->i | "in" j "at" t) dot bb(P)("in" j "at" t)
+/ Transition matrix $M$: The graph is represented by a Transition Matrix, where the entries denotes the presence/absence of an edge, with source node $s$ on columns and destination nodes $d$ on rows:
   $
-  We can simplify: the probability of transitioning don't change (the graph is immutable) and is equal to $M[i][j]$
-  $ = sum_j M[i][j] v_(j)(t) $
-  So we can compute each step of the vector in and inductive way:
-  $ underline(v)(t+1) = M underline(v)(t) $
-  This can be implemented with a very simple infinite while loop.
+    M_(d s) = cases(
+      0 quad & "if" exists.not space "edge" s -> d,
+      1/"outer degree"_s quad & "if" exists space "edge" s -> d
+    )
+  $
 
-  To decide when to stop we can use any trivial way:
-  - stopping at a fixed iteration number
-  - compute the difference between each iteration and when it goes below an $epsilon$ then stop
+  This matrix is a *Column-wise Stochastic* matrix (_CWS_):
+  - the sum of each column is $1$
+  - there are no negative entries
 
-There exists around $10^9$ page, so the matrix is around $10^18$ entries, each one $8$ bytes, so around $approx 10^19$ bytes.
+  #esempio[
+    #figure(
+      grid(
+        columns: 2,
+        gutter: 2em,
+        {
+          import fletcher: *
 
-The matrix is definitely not even close to being store in RAM (not even on disk).
-The vector ($10^9 dot 8$ bytes) is definitely storable in RAM ($approx 8$ GB).
+          let nodes = ("A", "B", "D", "C")
+          let edges = (
+            ("A", "B"),
+            ("B", "A"),
+            ("B", "D"),
+            ("D", "B"),
+            ("A", "D"),
+            ("D", "C"),
+            ("A", "C"),
+            ("C", "A"),
+          )
+
+          diagram(
+            node-stroke: .1em,
+            for (i, n) in nodes.enumerate() {
+              let pos = 135deg - i * 360deg / nodes.len()
+              node((pos, 18mm), name: str(n), n)
+            },
+            for (from, to) in edges {
+              let bend = if (to, from) in edges { 10deg } else { 0deg }
+              edge(label(str(from)), label(str(to)), "-|>", bend: bend)
+            },
+          )
+        },
+        table(
+          columns: 5,
+          align: center,
+          stroke: (x, y) => if x == 0 or y == 0 { none } else { .05em },
+          inset: 5pt,
+          [], [A], [B], [C], [D],
+          [A], [$0$], [$1/2$], [$1$], [$0$],
+          [B], [$1/3$], [$0$], [$0$], [$1/2$],
+          [C], [$1/3$], [$0$], [$0$], [$1/2$],
+          [D], [$1/3$], [$1/2$], [$0$], [$0$],
+        ),
+      ),
+      caption: [Example graph with its Transition Matrix],
+    )
+  ]
+
+== Random Surfing
+
+To calculate the importance of a page a process called Random Surfing is used.
+
+Some entities (called *surfers*) are initially (at time $t = 0$) distributed _evenly_ on the graph (each page has the same number of surfers).
+At this moment, the _probability_ that a surfer is over a node $a$ is equal for all nodes $n$:
+$ PP("surfer over node" a) = 1/n space forall a in "nodes", quad n = "number of nodes" $
+
+At each _iteration_, each surfer moves _randomly_ on the graph, choosing one of the _outgoing edges_ of their current node and moving to the pointed page.
+This means the surfers are *not* anymore _equally_ distributed and the probabilities have changed.
+
+This process goes on until it *converges* _(if it does)_.
+The resulting probabilities can be interpreted as the _importance_ of that node in the graph: the _higher_ the probability is, the more important the page is.
+
+Once again, some formalization is needed to proof the convergence.
+
+/ Vector $underline(v)(t)$: Vector of the probabilities that a surfer is over the node $i$ at time $t$.
+  $ underline(v)_(i)(t) = PP("surfer over node" i "at time" t) $
+
+  #nota[
+    The matrix $M$ and vector $underline(v)$ are *compatible* for product.
+  ]
+
+
+  It can be defined inductively:
+  $ underline(v)_(i)(0) = 1/n space forall i in n = PP("surfer over" i "at time" 0) $
+  $
+    underline(v)_(i)(t+1) & = PP(union.big("surfer over" j "at time" t, "moving from" j "to" i)) #<random-surfing-union-to-sum> \
+    & = underbrace(sum_j PP(j -> i | "surfer over" j "at time" t), M_(i j) space ("fixed for any time" t)) dot underbrace(PP("surver over" j "at time" t), v_(j)(t)) #<random-surfing-chain-rule> \
+    & = sum_j M_(i j) dot v_(j)(t)
+  $
+
+  #nota[
+    The probability of the union of _disjoint_ events is equal to their sum (#link-equation(<random-surfing-union-to-sum>)).
+
+    The probability of each event can be destructured using the #link("https://en.wikipedia.org/wiki/Chain_rule_(probability)")[chain rule] (#link-equation(<random-surfing-chain-rule>)).
+  ]
+
+  The whole vector can be updated for each step with a single *matrix-vector product*:
+  $ underline(v)(t+1) = M underline(v)(t) $ <random-surfing-next-vector>
+
+  This can be implemented with a very simple _infinite_ while loop.
+  The *stopping* mechanism can be implemented in two ways:
+  - stopping at a _fixed_ iteration number
+  - compute the _absolute difference_ between each iteration and when it goes below an $epsilon$ then stop
+
+#esempio[
+  The number of existing web pages is around $10^9$.
+  The matrix $M$ is around $10^18$ entries ($approx 8000000 "TB"$), while the vector $underline(v)$ is $10^9$ entries ($approx 8 "GB"$).
+
+  We can use the matrix-vector product approach described in the previous chapter with $underline(v)$ stored in RAM. // TODO: link to section
+]
 
 #teorema("Theorem")[
-  The probabilities will converge.
+  The vector $underline(v)$ will converge.
 
   #dimostrazione[
+    For this proof, we need a few intermediate results:
+    - the main _eigenvalue_ should be $lambda_1 = 1$ (#link-teorema(<random-surfing-power-method>))
 
+    // TODO: links to intermediate results
   ]
 ]
 
 == Power Method
 
-Given a square matrix:
-- eigenvalue $lambda$
-- eigenvector $underline(e)$
-
-$ <=> A underline(e) = lambda underline(e) $
+Given a square matrix $A$, we denote as $lambda$ an *eigenvalue* and as $underline(e)$ the corresponding *eigenvector* (for each eigenvalue one eigenvector exists and vice versa):
+$ A underline(e) = lambda underline(e) $
 
 #nota[
-  For each eigenvalue we have one eigenvector
+  A matrix is a _linear transformation_ for a vector (their product results in another vector).
+
+  If applying the linear transformation ($A$) to the vector $underline(e)$, the _direction_ of the vector is _unchanged_ or _reversed_ (it gets only scaled by a constant quantity $lambda$), then $underline(e)$ is an eigenvector for the matrix $A$ and $lambda$ its eigenvalue.
 ]
 
-#informalmente[
-  A vector multiplied by a matrix gives a vector.
-  So a matrix can be seen as a transformation for a vector.
+_Multiple_ eigenvalues and eigenvectors for a matrix could exist.
+We can rank them by non-increasing value of the eigenvalue:
+$ (lambda_1, underline(e)_1), ..., (lambda_n, underline(e)_n) $
+$ lambda_1 >= ... >= lambda_n $
 
-  Applying an eigenvalue to a vector, its direction stays the same, the only thing that change is its size.
-]
-
-We can rank the eigenvectors by the non-increasing value of eigenvalue.
-$ (lambda_1, e_1), ..., (lambda_n, e_n) $
-$ lambda_1 >= lambda_2 >= ... >= lambda_n $
-
-The $n$ eigenvalues form a linear basis for the space.
+The $n$ eigenvectors form a _linear basis_ for the $n$-dimensional vector space $RR^n$.
 $ {e_1, ..., e_n} = "linear basis" $
 
 #nota[
-  Linear basis: each single possible vector of that space can be expressed by a sum of the basis scaled up.
+  Linear basis: each single possible vector of that space can be expressed as a linear combination (sum of scaled versions) of the basis vectors. This means any vector $underline(v) in RR^n$ can be written as $underline(v) = alpha_1 underline(e)_1 + ... + alpha_n underline(e)_n$ for some scalars $alpha_1, ..., alpha_n$.
 ]
 
-$
-  underline(v)(0) = alpha_(1) underline(e_1) + ... + alpha_n underline(e_n)
-$
+#teorema("Theorem")[
+  The algorithm will be _useful_ only when the principal eigenvalue of the matrix $A$ is $lambda_1 = 1$.
 
-$
-  v(1) & = A(alpha_(1) underline(e_1) + ... + alpha_n underline(e_n)) \
-       & = alpha_1 A e_1 + alpha_2 A e_2 + ... + alpha_n A e_n \
-       & = alpha_1 lambda_1 e_1 + alpha_2 lambda_2 e_2 + ... + alpha_n lambda_n e_n \
-       \
-  v(2) & = A(alpha_1 lambda_1 e_1 + alpha_2 lambda_2 e_2 + ... + alpha_n lambda_n e_n) \
-       & = alpha_1 lambda_1 A e_1 + ... + alpha_n lambda_n A e_n \
-       & = alpha_1 lambda_1^2 e_1 + ... + alpha_n lambda_n^2 e_n \
-       \
-  v(t) & = alpha_1 lambda_1^t e_1 + ... + alpha_n lambda_n^t e_n \
-       & = lambda_1^(t)(alpha_1 e_1 + alpha_2 (lambda_2 / lambda_1)^t e_2 + ... +)
-$
+  #dimostrazione[
+    Because $underline(v) in RR^n$, then we can rewrite it as:
+    $ underline(v)(0) = alpha_(1) underline(e)_1 + ... + alpha_n underline(e)_n $
 
-But these are sorted, so when $t$ increases, the vector *alignes* with $lambda_1^t a_1 e_1$.
+    Then we can multiply by the matrix $A$ to get the next vector (as per #link-equation(<random-surfing-next-vector>)):
+    $
+      underline(v)(1) & = mr(A)(alpha_(1) underline(e)_1 + ... + alpha_n underline(e)_n) \
+                      & = alpha_1 mr(A) underline(e)_1 + ... + alpha_n mr(A) underline(e)_n \
+                      & = alpha_1 mr(lambda_1) underline(e)_1 + ... + alpha_n mr(lambda_n) underline(e)_n \
+                      \
+      underline(v)(2) & = mb(A)(alpha_1 lambda_1 underline(e)_1 + ... + alpha_n lambda_n underline(e)_n) \
+                      & = alpha_1 lambda_1 mb(A) underline(e)_1 + ... + alpha_n lambda_n mb(A) underline(e)_n \
+                      & = alpha_1 lambda_1^mb(2) underline(e)_1 + ... + alpha_n lambda_n^mb(2) underline(e)_n \
+    $
+    Generalized over $t$:
+    $
+      underline(v)(t) & = alpha_1 lambda_1^t underline(e)_1 + ... + alpha_n lambda_n^t underline(e)_n
+    $
+    Factoring $mr(lambda_1^t)$:
+    $
+      underline(v)(t) & = mr(lambda_1^t)(alpha_1 underline(e)_1 + ... + (alpha_n lambda_n^t underline(e)_n)/mr(lambda_1^t)) \
+      & = mr(lambda_1^t)(alpha_1 underline(e)_1 + ... + alpha_n (lambda_n / mr(lambda_1))^mr(t) underline(e)_n)
+    $
 
-#attenzione[
-  We cannot speak of "converge" as $t$ is still in the equation.
-]
+    Because the eigenvalues are sorted, $lambda_1^t$ will always be the biggest $lambda_n^t$.
+    When $t$ increases, the other terms will go to $0$, meaning the vector will *align* with $lambda_1^t a_1 underline(e)_1$:
+    $
+      underline(v)(t -> infinity) & = lambda_1^t (alpha_1 underline(e)_1 + ... + alpha_n mr(0) underline(e)_n) \
+                                  & = lambda_1^t a_1 underline(e)_1
+    $
 
-#nota[
-  Scaling an eigenvector doesnt change the eigenvalue.
-]
+    #attenzione[
+      We cannot speak of _convergence_ as $t$ is still in the equation, so we say _align_.
+    ]
 
-Let's analyze
-- $lambda_1 > 1: lambda_1^t$ diverge
-- $lambda_1 < 1: lambda_1^t$ converge to $0$ (but to the null vector, but this means all pages have importance $0$, useless)
-- $lambda_1 = 1: lambda_1^t = 1$, the vector converges to the principal eigenvector
+    Let's analyze the behaviour of $lambda_1$:
+    $
+      lambda_1^t =_(t->infinity) cases(
+        infinity & quad "if" lambda_1 > 1,
+        0 & quad "if" lambda_1 < 1,
+        1 & quad "if" lambda_1 = 1,
+      )
+    $
+
+    This means the probability vector will converge for $lambda < 1$ and $lambda = 1$.
+    But when $lambda < 1$ the vector will converge to $0$, meaning all the pages of the web will have _importance_ $0$, making the whole algorithm _useless_.
+    The only useful case is $lambda = 1 space qed$.
+  ]
+] <random-surfing-power-method>
+
+
+#todo
 
 #teorema("Theorem")[
   If a matrix is columns-wise stocastic, we can show that its principal eigenvalue is $1$.
@@ -230,7 +327,7 @@ Result: page-rank always converges if we run it on a column-wise stochastic.
 
 But the internet graph is NOT column wise stochastic.
 
-The graph that describes the web is NOT strongly connected.
+The graph that describes the web is NOT strongly connected (page 181 book).
 It has a form that resembles a bowtie:
 - the central component is a SCC (strongly connected component)
 - two lateral components:
@@ -264,6 +361,8 @@ $ ... $
   This sytem was put in place to prevent web spamming.
   Malevolent agents found another way.
 ]
+
+#set math.equation(numbering: none, supplement: "EQ")
 
 = Lecture 4
 
