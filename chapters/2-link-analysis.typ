@@ -34,6 +34,11 @@ Some formalization is needed.
 
 / Web Graph: The web can be formalized as a _graph_, with pages as _nodes_ and links between them as _directed edges_.
 
+/ Row-wise (RWS) and Column-wise (CWS) Stochastic Matrix: A matrix is row (or column)-wise stochastic if and only if:
+  - the sum of each row (or column) is $1$
+  - there are no negative entries
+  Each row (or column) of these matrices describe a _probability distribution_.
+
 / Transition matrix $M$: The graph is represented by a Transition Matrix, where the entries denotes the presence/absence of an edge, with source node $s$ on columns and destination nodes $d$ on rows:
   $
     M_(d s) = cases(
@@ -41,10 +46,8 @@ Some formalization is needed.
       1/"outer degree"_s quad & "if" exists space "edge" s -> d
     )
   $
-
-  This matrix is a *Column-wise Stochastic* matrix (_CWS_):
-  - the sum of each column is $1$
-  - there are no negative entries
+  The transition matrix is a _column-wise stochastic_ matrix.
+  Each column is a _probability distribution_ and it denotes the destination of a surfer during the _random surfing process_ described below.
 
   #esempio[
     #figure(
@@ -108,7 +111,7 @@ This means the surfers are *not* anymore _equally_ distributed and the probabili
 This process goes on until it *converges* _(if it does)_.
 The resulting probabilities can be interpreted as the _importance_ of that node in the graph: the _higher_ the probability is, the more important the page is.
 
-Once again, some formalization is needed to proof the convergence.
+Once again, some formalization and algebraic concepts are needed to proof the convergence.
 
 / Vector $underline(v)(t)$: Vector of the probabilities that a surfer is over the node $i$ at time $t$.
   $ underline(v)_(i)(t) = PP("surfer over node" i "at time" t) $
@@ -140,71 +143,78 @@ Once again, some formalization is needed to proof the convergence.
   - stopping at a _fixed_ iteration number
   - compute the _absolute difference_ between each iteration and when it goes below an $epsilon$ then stop
 
-#esempio[
-  The number of existing web pages is around $10^9$.
-  The matrix $M$ is around $10^18$ entries ($approx 8000000 "TB"$), while the vector $underline(v)$ is $10^9$ entries ($approx 8 "GB"$).
+  #esempio[
+    The number of existing web pages is around $10^9$.
+    The matrix $M$ is around $10^18$ entries ($approx 8000000 "TB"$), while the vector $underline(v)$ is $10^9$ entries ($approx 8 "GB"$).
 
-  We can use the matrix-vector product approach described in the previous chapter with $underline(v)$ stored in RAM. // TODO: link to section
-]
+    We can use the matrix-vector product approach described in the previous chapter with $underline(v)$ stored in RAM. // TODO: link to section
+  ]
+
+/ Eigenvalues $lambda$ and Eigenvectors $underline(e)$:
+  Given a square matrix $A$, we denote as $lambda$ an _eigenvalue_ and as $underline(e)$ the corresponding _eigenvector_ (for each eigenvalue one eigenvector exists and vice versa):
+  $ A underline(e) = lambda underline(e) $ <eigenvalue-definition>
+
+  #nota[
+    A matrix is a _linear transformation_ for a vector (their product results in another vector).
+
+    If applying the linear transformation ($A$) to the vector $underline(e)$, the _direction_ of the vector is _unchanged_ or _reversed_ (it gets only scaled by a constant quantity $lambda$), then $underline(e)$ is an eigenvector for the matrix $A$ and $lambda$ its eigenvalue.
+  ]
+
+  A matrix of dimension $n times n$, admits $n$ pairs of eigenvalues and eigenvectors.
+  We can rank them by non-increasing value of the eigenvalue:
+  $ (lambda_1, underline(e)_1), ..., (lambda_n, underline(e)_n) $
+  $ lambda_1 >= ... >= lambda_n $
+
+  The $n$ eigenvectors form a _linear basis_ for the $n$-dimensional vector space $RR^n$.
+  $ {e_1, ..., e_n} = "linear basis" $
+
+  #nota[
+    Linear basis: each single possible vector of that space can be expressed as a linear combination (sum of scaled versions) of the basis vectors. This means any vector $underline(v) in RR^n$ can be written as $underline(v) = alpha_1 underline(e)_1 + ... + alpha_n underline(e)_n$ for some scalars $alpha_1, ..., alpha_n$.
+  ]
+
+== Convergence of Random Surfing
 
 #teorema("Theorem")[
-  The vector $underline(v)$ will converge.
+  The random surfing process will *converge* on a CWS matrix.
+  In other words, the vector $underline(v)$ will converge to a _non-null_ value.
 
   #dimostrazione[
     For this proof, we need a few intermediate results:
-    - the main _eigenvalue_ should be $lambda_1 = 1$ (#link-teorema(<random-surfing-power-method>))
+    - the vector $underline(v)$ aligns with $lambda_1^t a_1 underline(e)_1$ (#link-teorema(<random-surfing-power-method>))
+    - the main _eigenvalue_ should be $lambda_1 = 1$ (#link-teorema(<random-surfing-principal-eigenvalue-1>))
+    - a CWS matrix admits $lambda = 1$ as eigenvalue (#link-teorema(<random-surfing-admits-lambda>))
+    - a matrix and its transpose share the same eigenvalues (#link-teorema(<random-surfing-transpose-eigenvalues>))
+    - the product of a matrix $A^k$ produce $lambda^k$ eigenvalue (#link-teorema(<random-surfing-power-eigenvalues>))
+    - given a RWS matrix $A$, $A^k$ is still RWS (#link-teorema(<random-surfing-ak-still-rws>))
+    - the principal eigenvalue of a CWS matrix is $lambda_1 = 1$ (#link-teorema(<random-surfing-lambda-1>))
 
-    // TODO: links to intermediate results
+    In particular, by #link-teorema(<random-surfing-principal-eigenvalue-1>) and #link-teorema(<random-surfing-lambda-1>), the vector converges, so the algorithm converges to a non-null vector of importances.
   ]
 ]
 
-== Power Method
+_The intermediate results shown below are commented with some _informal_ reasoning on why are we pursuing that result._
 
-Given a square matrix $A$, we denote as $lambda$ an *eigenvalue* and as $underline(e)$ the corresponding *eigenvector* (for each eigenvalue one eigenvector exists and vice versa):
-$ A underline(e) = lambda underline(e) $
-
-#nota[
-  A matrix is a _linear transformation_ for a vector (their product results in another vector).
-
-  If applying the linear transformation ($A$) to the vector $underline(e)$, the _direction_ of the vector is _unchanged_ or _reversed_ (it gets only scaled by a constant quantity $lambda$), then $underline(e)$ is an eigenvector for the matrix $A$ and $lambda$ its eigenvalue.
-]
-
-_Multiple_ eigenvalues and eigenvectors for a matrix could exist.
-We can rank them by non-increasing value of the eigenvalue:
-$ (lambda_1, underline(e)_1), ..., (lambda_n, underline(e)_n) $
-$ lambda_1 >= ... >= lambda_n $
-
-The $n$ eigenvectors form a _linear basis_ for the $n$-dimensional vector space $RR^n$.
-$ {e_1, ..., e_n} = "linear basis" $
-
-#nota[
-  Linear basis: each single possible vector of that space can be expressed as a linear combination (sum of scaled versions) of the basis vectors. This means any vector $underline(v) in RR^n$ can be written as $underline(v) = alpha_1 underline(e)_1 + ... + alpha_n underline(e)_n$ for some scalars $alpha_1, ..., alpha_n$.
-]
-
-#teorema("Theorem")[
-  The algorithm will be _useful_ only when the principal eigenvalue of the matrix $A$ is $lambda_1 = 1$.
+#teorema("Theorem (Power Method)")[
+  When $t$ increases, the vector $underline(v)(t)$ *aligns* with the $lambda_1^t a_1 underline(e)_1$.
 
   #dimostrazione[
-    Because $underline(v) in RR^n$, then we can rewrite it as:
+    Because $underline(v) in RR^n$, then we can rewrite it as a _linear combination_ of the basis:
     $ underline(v)(0) = alpha_(1) underline(e)_1 + ... + alpha_n underline(e)_n $
 
     Then we can multiply by the matrix $A$ to get the next vector (as per #link-equation(<random-surfing-next-vector>)):
     $
       underline(v)(1) & = mr(A)(alpha_(1) underline(e)_1 + ... + alpha_n underline(e)_n) \
-                      & = alpha_1 mr(A) underline(e)_1 + ... + alpha_n mr(A) underline(e)_n \
-                      & = alpha_1 mr(lambda_1) underline(e)_1 + ... + alpha_n mr(lambda_n) underline(e)_n \
-                      \
+      & = alpha_1 mr(A) underline(e)_1 + ... + alpha_n mr(A) underline(e)_n & #comment[by distributing $mr(A)$] \
+      & = alpha_1 mr(lambda_1) underline(e)_1 + ... + alpha_n mr(lambda_n) underline(e)_n & #comment[by eigenvalue definition #link-equation(<eigenvalue-definition>)] \
+      \
       underline(v)(2) & = mb(A)(alpha_1 lambda_1 underline(e)_1 + ... + alpha_n lambda_n underline(e)_n) \
-                      & = alpha_1 lambda_1 mb(A) underline(e)_1 + ... + alpha_n lambda_n mb(A) underline(e)_n \
-                      & = alpha_1 lambda_1^mb(2) underline(e)_1 + ... + alpha_n lambda_n^mb(2) underline(e)_n \
+      & = alpha_1 lambda_1 mb(A) underline(e)_1 + ... + alpha_n lambda_n mb(A) underline(e)_n \
+      & = alpha_1 lambda_1^mb(2) underline(e)_1 + ... + alpha_n lambda_n^mb(2) underline(e)_n \
     $
     Generalized over $t$:
     $
-      underline(v)(t) & = alpha_1 lambda_1^t underline(e)_1 + ... + alpha_n lambda_n^t underline(e)_n
-    $
-    Factoring $mr(lambda_1^t)$:
-    $
-      underline(v)(t) & = mr(lambda_1^t)(alpha_1 underline(e)_1 + ... + (alpha_n lambda_n^t underline(e)_n)/mr(lambda_1^t)) \
+      underline(v)(t) & = alpha_1 lambda_1^t underline(e)_1 + ... + alpha_n lambda_n^t underline(e)_n \
+      & = mr(lambda_1^t)(alpha_1 underline(e)_1 + ... + (alpha_n lambda_n^t underline(e)_n)/mr(lambda_1^t)) & #comment[by factoring $mr(lambda_1^t)$] \
       & = mr(lambda_1^t)(alpha_1 underline(e)_1 + ... + alpha_n (lambda_n / mr(lambda_1))^mr(t) underline(e)_n)
     $
 
@@ -212,14 +222,22 @@ $ {e_1, ..., e_n} = "linear basis" $
     When $t$ increases, the other terms will go to $0$, meaning the vector will *align* with $lambda_1^t a_1 underline(e)_1$:
     $
       underline(v)(t -> infinity) & = lambda_1^t (alpha_1 underline(e)_1 + ... + alpha_n mr(0) underline(e)_n) \
-                                  & = lambda_1^t a_1 underline(e)_1
+                                  & = lambda_1^t a_1 underline(e)_1 space qed
     $
 
     #attenzione[
       We cannot speak of _convergence_ as $t$ is still in the equation, so we say _align_.
     ]
+  ]
+] <random-surfing-power-method>
 
-    Let's analyze the behaviour of $lambda_1$:
+_When is that result useful? We need to calculate the importance of the pages, the vector must converge._
+
+#teorema("Theorem")[
+  The algorithm will be _useful_ only when the principal eigenvalue of the matrix $A$ is $lambda_1 = 1$.
+
+  #dimostrazione[
+    Let's analyze the behaviour of $lambda_1$ when $t$ increases:
     $
       lambda_1^t =_(t->infinity) cases(
         infinity & quad "if" lambda_1 > 1,
@@ -228,138 +246,164 @@ $ {e_1, ..., e_n} = "linear basis" $
       )
     $
 
-    This means the probability vector will converge for $lambda < 1$ and $lambda = 1$.
-    But when $lambda < 1$ the vector will converge to $0$, meaning all the pages of the web will have _importance_ $0$, making the whole algorithm _useless_.
-    The only useful case is $lambda = 1 space qed$.
+    This means the probability vector will converge for $lambda_1 < 1$ and $lambda_1 = 1$.
+
+    But when $lambda_1 < 1$ the vector will converge to $0$, meaning _all_ the pages of the web will have _importance_ $0$, making the whole algorithm _useless_.
+    The only useful case is $lambda_1 = 1 space qed$.
   ]
-] <random-surfing-power-method>
+] <random-surfing-principal-eigenvalue-1>
 
-
-#todo
+_Does the matrix $A$ even admits $lambda = 1$ as eigenvalue?_
 
 #teorema("Theorem")[
-  If a matrix is columns-wise stocastic, we can show that its principal eigenvalue is $1$.
-]
+  A column-wise stochastic (CWS) matrix $A$ admits $lambda = 1$ as an eigenvalue.
 
-Finding the eigenvalues of a squadre matrix:
-- start from a matrix
-- subtract lambda times the identity matrix
-- put to $0$
-$ det(A - lambda I) = 0 $
-We can leverage the transposition:
-$ det(A - lambda I)^T = det(A^T - lambda I) $
+  #dimostrazione[
+    A CWS matrix has the property that each column sums to $1$:
+    $ sum_i A_(i j) = 1 quad forall j $
 
-#teorema("Fact1")[
-  $A and A^T$ same eigenvalue
-]
+    Consider the vector formed by all ones $underline(1) = (1, ..., 1)^T$.
+    Multiplying $A$ by this vector:
+    $ (A underline(1))_i = sum_j A_(i j) dot 1 = sum_j A_(i j) = 1 $
 
-#teorema("Fact2")[
-  $1$ is an eigenvalue for each RSM (rowwise stochastic matrix) $A$
+    Therefore:
+    $ A underline(1) = underline(1) $
+
+    This means $underline(1)$ is an eigenvector of $A$ with corresponding eigenvalue $lambda = 1 space qed$.
+  ]
+] <random-surfing-admits-lambda>
+
+_We just showed that $lambda = 1$ is an eigenvalue for $A$, but is it the principal one?
+For this we need another two intermediate result on matrices._
+
+#teorema("Lemma")[
+  A matrix $A$ and its transpose $A^T$ share the same *eigenvalues* (not eigenvectors).
+  $ A underline(w) = lambda underline(w) $
+  $ A^T underline(u) = lambda underline(u) $
+] <random-surfing-transpose-eigenvalues>
+
+#teorema("Lemma")[
+  If $underline(w)$ is an eigenvector of matrix $A$ with eigenvalue $lambda$, then:
+  $ A underline(w) = lambda underline(w) $
+  $ A^k underline(w) = lambda^k underline(w) $
+  for any positive integer $k$.
+] <random-surfing-power-eigenvalues>
+
+#teorema("Theorem")[
+  If a matrix $A$ is row-wise stochastic (RWS), then $A^k$ is also RWS for any positive integer $k$.
 
   #nota[
-    RSM: $sum$ foreach row = $1$
+    - $a_(i j)$: element of the original matrix $A$
+
+    - $a_(i j)^((k))$: element of the matrix $A^(k)$
+
+    - $a_(i j)^((k+1))$: element of the matrix $A^(k+1)$
   ]
-]
 
-#teorema("Fact3")[
-  $A underline(1) = 1$
-  Multipling the matrix for the vector $1$ results in $1$.
+  #dimostrazione[
+    We prove by induction on $k$.
 
-  So $underline(1)$ is an eigenvector and $1$ is an eigenvalue.
+    / Base case ($k = 1$): $A^1 = A$ is RWS by assumption $qed$.
 
-  So $1$ is an eigenvalue of any stochastic matrix.
-]
+    / Induction step: We assume $A^k$ is RWS:
+      $ sum_j a^((k))_(i j) = 1 quad forall i $
 
-We just showed that one eigenvalue there is one, but we need to proof that the principal eigenvector is one.
+      We need to prove that $A^(k+1) = A^k dot A$ is RWS:
+      $ sum_j a^((k+1))_(i j) = 1 quad forall i $
+
+      Expanding the matrix-matrix multiplication:
+      $ a^((k+1))_(i j) = sum_s a^((k))_(i s) a_(s j) $
+
+      For fixed $i$:
+      $
+        sum_j a_(i j)^((k+1)) & = sum_j sum_s a_(i s)^((k)) a_(s j) \
+        & = sum_s a_(i s)^((k)) underbrace(sum_j a_(s j), = 1) quad& #comment[$=1$ by original assumption] \
+        & = sum_s a_(i s)^((k)) dot 1 \
+        & = underbrace(sum_s a_(i s)^((k)), = 1) & #comment[$=1$ by induction hypothesis] \
+        & = 1 quad forall i space qed
+      $
+  ]
+] <random-surfing-ak-still-rws>
+
+_Now we can prove that $lambda = 1$ is the _principal_ eigenvalue for a CWS matrix._
 
 #teorema("Theorem")[
-  If $A$ is RWS, $A^k$ is still RWS.
+  For a column-wise stochastic (CWS) matrix $A$, the eigenvalue $lambda = 1$ is the principal eigenvalue.
 
   #dimostrazione[
-    Proof by induction.
+    Prove by contradiction: assume there exists an eigenvalue $lambda > 1$:
+    $ A underline(u) = lambda underline(u) $
 
-    Base: $k = 1$, $A^1 = A$ trivial.
+    Consider $B = A^T$, since $A$ is CWS, $B$ is RWS.
+    By #link-teorema(<random-surfing-transpose-eigenvalues>), they share the same eigenvalue:
+    $ B underline(w) = lambda underline(w) $
 
-    Induction step: $A$ is rws, $A^(k+1)$
-    $ A^(k+1) = A^k dot A $
-    $ a^((k+1))_(i j) = sum_s a^((k))_(i s) a_(s j) $
-    ...
-    $ sum_j underbrace(a^((k))_(s j), = 1) = 1 $
+    Consider $C = B^k$, by #link-teorema(<random-surfing-ak-still-rws>) is still a RWS matrix.
+    By #link-teorema(<random-surfing-power-eigenvalues>), for any positive integer $k$:
+    $ B^k underline(w) = C underline(w) = lambda^k underline(w) $
 
+    Let $w_max = max(w_1, ..., w_n)$.
+    Component-wise for any $i$:
+    $
+      lambda^k w_i & = sum_j c_(i j) w_j             &                  #comment[by definition] \
+                   & <= sum_j c_(i j) w_max \
+                   & <= w_max mr(sum_j c_(i j)) quad & #comment[$w_max$ does not depend on $j$] \
+                   & <= w_max dot mr(1) quad         &           #comment[by definition of RWS] \
+    $
+
+    Meaning:
+    $ lambda^k w_i <= w_max $
+
+    But we can chose an arbitrary big $k$, obtaining
+    $ lambda^k w_i > w_max $
+    which is a contradiction, therefore no eigenvalue $lambda > 1$ exists and $lambda = 1$ must be the principal eigenvalue $qed$.
   ]
+] <random-surfing-lambda-1>
 
-  #dimostrazione[
-    We should also talk about non-negative entries, but based on how we do construct these matrices, it is impossible that they exist.
-  ]
-]
+_Result: page-rank always converges if we run it on a column-wise stochastic._
 
+== Structure of the Web
 
-$exists lambda, underline(v), quad A underline(v) = lambda underline(v), quad "with" lambda > 1, quad A "is CWS"$
+The internet graph is *not* column wise stochastic.
 
-The proof is by absurd, if no $lambda > 1$ exists, when the $lambda = 1$ eigenvalue must be the principal one.
+The web resembles a _bowtie_, with as main components:
+- _Strongly connected component_ (SCC): a central part with strongly connected pages
+- _In-bound component_: pages that can reach the SCC (but cannot be reached from the SCC)
+- _Out-bound component_: pages that can be reached from the SCC (but cannot reach the SCC)
+- _Tendrils_: pages that that reach out from the in-bound component or pages that reach in from the out-bound component
+- _Tubes_: pages that can reach the out-bound component from the in-bound component
+- _Disconnected components_: isolated pages
 
-$lambda$ is eigenvalue of $B = A^T$ with some associated eigenvector $underline(w)$: $B underline(w) = lambda underline(w)$
+#figure(
+  image("../assets/web-structure.png", width: 50%),
+  caption: [Structure of the web],
+)
 
-$ B^k underline(w) = underbrace(B dot ... dot B, k "times") dot underline(w) = lambda^k underline(w) $
+In particular, exist structural problems that violate the column-wise stochastic property:
+- _Dead ends_: nodes with out-degree equal to $0$.
+  Surfers reaching dead ends are *trapped* (it is impossible for them to exit the node), causing the total amount of surfers to decrease.
+  Over iterations, the number of surfers decreases until the result vector converges to *zero*, making the algorithm useless.
+- _Spider traps_: cycles with no outgoing edges to *other components*.
+  Once surfers enter a spider trap, they remain trapped indefinitely.
+  Eventually, all surfers will end un *in the trap*, skewing the importance ranking.
 
-$C = B^k, quad C underline(w) = lambda^k underline(w)$
+Both issues prevent the transition matrix from being column-wise stochastic, breaking the convergence guarantee.
+The solution is to introduce *teleportation*.
 
-$sum_j c_(i j) w_j = lambda^k w_i$
-This holds for any value of $k$ and $lambda > 1$
+== Teleportation
 
-Fix any $G$, then always:
-$ lambda^k w_i > G $
+At each _iteration_, a surfer either continues following links (with probability $beta$) or teleports to a random page (with probability $1 - beta$).
+This process is called *teleportation* or *taxation* (a part of the surfers is reserved to be teleported, like a tax).
 
-Define $w_max = max_i w_i$, so:
-$ sum_j c_(i j) w_max >= sum_j c_(i j) w_j $
+This modification transforms the transition matrix into a CWS matrix, ensuring convergence:
+$
+  underline(v)(t+1) = underbrace(beta M underline(v)(t), "same as before") + underbrace((1-beta)[1/n]_n, "each node has the "\ "same probability " 1/n \ "of receiving teleportation") quad beta in [0, 1]
+$
 
-So:
-$ sum_j G_(i j) > G/w_max $
-
-Recap:
-- A is rws
-- B is A transposed, so B is rws
-- C is $B^k$, so C is rws
-- so $C = 1$
-- so $1 > G/w_max$, a quantity that I can fix as I want, impossible
-
-Result: page-rank always converges if we run it on a column-wise stochastic.
-
-But the internet graph is NOT column wise stochastic.
-
-The graph that describes the web is NOT strongly connected (page 181 book).
-It has a form that resembles a bowtie:
-- the central component is a SCC (strongly connected component)
-- two lateral components:
-  - INbound component: links from them to the SCC
-  - OUTbound component: links from the SCC to the OUTbound
-There are more less important pages:
-- Tendrils: page that from IN/OUT go to some isolated pages not in the SCC
-- Tubes: from IN to OUT
-
-Bad situations that exists in practice:
-- Dead ends: node with outdegree equal to $0$.
-  These make the transition matrix non cws.
-  The surfers that end in a deadend are lost.
-  The number of surfers at each iteration decreases (a leak): eventually the number of surfers will become $0$.
-  The result vector will become the null vector.
-- Spider traps: cycles with no exit.
-  Random surfers gets trapped in that circle.
-  Eventually all the surfers will end un in this trap.
-
-We slightly modify the random surfing process: at each time a surfer either continues with the random surfing or gets *teleported* (also called taxation).
-
-$ underline(v)(t+1) = , quad beta in (0, 1) $
-$ underline(v)(t+1) = beta M underline(v)(t) + (1-beta)[1/n]_n $
-$ ... $
+The modified matrix is CWS because each column now sums to $1$, guaranteeing that the random surfing process converges to a stable importance ranking.
 
 #nota[
-  This system works with one assumption: the ranking for pages is the same for all users.
-]
-
-#nota[
-  This sytem was put in place to prevent web spamming.
-  Malevolent agents found another way.
+  This system works with one assumption: the ranking for pages is the *same* for *all users*.
 ]
 
 #set math.equation(numbering: none, supplement: "EQ")

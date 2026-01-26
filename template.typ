@@ -24,6 +24,8 @@
 #let mp(body) = text(fill: purple, $#body$)    // purple
 #let mb(body) = text(fill: blue, $#body$)      // blue
 
+#let comment(body) = text(size: 8pt, "(" + body + ")")
+
 // ============================================================================
 // COLORED INFO BOXES
 // ============================================================================
