@@ -31,3 +31,5 @@
 )
 
 #include "chapters/1-hdfs-mapreduce.typ"
+
+#include "chapters/3-similarity.typ"
