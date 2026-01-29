@@ -286,14 +286,14 @@ If the relation is too big, then we can't use a traditional DBMS, but we can use
     Multiple values with the same key $t$ are generated only when multiple rows with the same exact content exist (no primary key exists in the table).
   ]
 
-/ Projection $pi_(A,B) (R)$: the map job filters the columns, while the reduce step returns the data as it is.
+/ Projection $pi_(A,B) (R)$: the map job filters the columns, while the reduce step returns the data as it is
   $
     t in R -> #rect[MAP] -> (t', t')
   $
   $ (t', [t', ..., t']) -> #rect[REDUCE] -> (t', t') $
   #note[
     The map function extracts only the requested attributes $A, B$ from tuple $t$, producing $t'$.
-    *Crucial Step:* The Reduce function performs *duplicate elimination*. Since Projection can result in identical tuples, the Reducer receives $[t', t', ...]$ and must output a single $t'$ for *Set* semantics.
+    *Crucial Step:* The Reduce function performs *duplicate elimination*. Since Projection can result in identical tuples, the Reducer receives $[t', t', ...]$ and must output a single $t'$ for *set* semantics.
   ]
 
 / Union $R union S$: multiple map functions exist, one for the relation $R$ and one for relation $S$. Both map functions output tuples that get shuffled to reduce functions that output them.
