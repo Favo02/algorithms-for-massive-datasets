@@ -30,20 +30,20 @@
 // Helper functions for different types of information boxes
 // Note: default titles are in Italian, but can be customized
 
-#let nota(body) = { gentle-clues.info(title: "Nota")[#body] }
-#let attenzione(body) = { gentle-clues.warning(title: "Attenzione")[#body] }
-#let informalmente(body) = { gentle-clues.idea(title: "Informalmente", accent-color: green)[#body] }
-#let esempio(body) = { gentle-clues.experiment(title: "Esempio", accent-color: purple)[#body] }
+#let note(body) = { gentle-clues.info(title: "Note")[#body] }
+#let warning(body) = { gentle-clues.warning(title: "Warning")[#body] }
+#let informally(body) = { gentle-clues.idea(title: "Informally", accent-color: green)[#body] }
+#let example(body) = { gentle-clues.experiment(title: "Example", accent-color: purple)[#body] }
 
 // Proof box with auto-numbered equations
-#let dimostrazione(body) = {
+#let proof(body) = {
   set math.equation(numbering: "(1.1)", supplement: "EQ")
-  gentle-clues.memo(title: "Dimostrazione")[#body]
+  gentle-clues.memo(title: "Proof")[#body]
 }
 
 // Theorem box with auto-numbering and auto-numbered equations
-#let teoremi-counter = counter("teorema")
-#let teorema(title, body) = {
+#let teoremi-counter = counter("Theorem")
+#let theorem(title, body) = {
   set math.equation(numbering: "(1.1)", supplement: "EQ")
   teoremi-counter.step()
   gentle-clues.task(
