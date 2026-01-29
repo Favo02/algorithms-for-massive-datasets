@@ -543,3 +543,84 @@ The analogous thing can be done with the other parts of the property (with $d_2$
   We can increase the probability at the cost of increasing also the other treshold.
 ]
 
+
+
+---
+
+// what jack's brain has accomplished
+
+== Recap: LSH and the "S-Curve"
+We were talking about the similarity pipeline for massive datasets. The main goal is to avoid the $O(n^2)$ complexity of comparing every single pair of documents.
+
+In particular, we focused on the probability that a pair of documents $(S, t)$ end up in the same bucket. If we use $b$ bands and $r$ rows per band, the probability $p(s)$ that two docs with Jaccard similarity $s$ match in at least one band is:
+
+$ P(S, T "match at least in one band") = 1 - (1 - s^r)^b = p(s) $
+
+This function gives us the *sigmoid graph* (the S-curve).
+- *FP (False Positives):* non-similar docs that pass LSH.
+- *FN (False Negatives):* similar docs that don't pass LSH.
+
+=== Finding the Threshold
+If we take the derivative of the sigmoid graph, we obtain a *bell-shaped curve*. To find the exact maximum point (the "steepest" part of the S-curve), we should technically look at the second derivative, but for our purposes, an approximation $s^*$ is enough.
+
+We can fix a similarity threshold $t$ as:
+$ t approx (1/b)^(1/r) $
+
+Now, if we want to ensure that our $s^*$ is equal to a specific threshold we fixed (we only care about docs with Jaccard $> t o t$), we need to select $b$ and $r$ carefully. Since we also know that $b dot r = n$ (where $n$ is the number of rows in the signature matrix), we just solve a system of two equations in two unknowns ($b$ and $r$).
+
+== Review of the Overall Process
+1. *Shingling:* Start from the document, strip stop-words, and decide the $k$-shingles size depending on the category of docs.
+2. *Min-Hashing:* Create the signature matrix, deciding how many rows $n$ to use.
+3. *Parameters:* Fix the threshold $t$ and solve the system to get optimal values for $b$ and $r$.
+4. *LSH:* Divide the matrix into $b$ bands and apply hashing.
+5. *Verification:* For each candidate pair, compute the actual Jaccard similarity and eliminate pairs that don't surpass $t$.
+
+== Distances
+What happens when the documents are not strings? For example, if we use a table to avoid duplicated records, the document is basically a vector. Jaccard might not be applicable here.
+
+We need to measure the degree of similarity using *distances*. Distance is the dual of similarity:
+- Similarity is big $arrow$ Distance is small.
+- Similarity is small $arrow$ Distance is big.
+
+A function $d(x, y)$ is a distance if it satisfies:
+- *Positivity:* $d(x, y) >= 0$ and $d(x, y) = 0$ iff $x = y$.
+- *Symmetry:* $d(x, y) = d(y, x)$.
+- *Triangle Inequality:* $d(x, y) <= d(x, z) + d(z, y)$.
+
+=== Typical Distances
+1. *Euclidean Distance ($L_2$):* The length of the segment joining two points in $RR^d$. It's part of the $L_p$ family:
+   $ d(x, y) = (sum_{i=1}^d |x_i - y_i|^p)^(1/p) $
+   *Note:* If $p=1$ we get the *Manhattan distance*. If we plot $d(x,y)=1$ for $p=2$ we get a circle; for Manhattan, we get a square.
+
+
+
+2. *Jaccard Distance:* Defined as $1 - "Jaccard Similarity"$.
+   *Triangle inequality proof:* Recall $J(A, B) = P(h(A) = h(B))$, so $d(A, B) = P(h(A) != h(B))$. If $h(A) != h(B)$, then for any third set $C$, $h(C)$ must be different from either $h(A)$ or $h(B)$. In terms of probability:
+   $ P(h(A) != h(B)) <= P(h(A) != h(C) " or " h(B) != h(C)) <= d(A, C) + d(B, C) $
+
+3. *Cosine Distance:* Objects are vectors starting from a common origin (directions).
+   $ d(x, y) = theta = arccos((x dot y) / (||x|| dot ||y||)) $
+   It's basically the angle between vectors.
+
+4. *Edit Distance (Levenshtein):* Minimum number of atomic operations (add, delete, modify char) to transform string $s$ into $t$.
+
+5. *Hamming Distance:* Number of positions in which bits (or chars) differ.
+   Example: `11010` and `10110` have distance 2.
+
+== Formalizing LSH Families
+Can we extend LSH to these distances? We need to speak about probabilities of events because the algorithm is random.
+
+A family of functions $F$ is *$(d_1, d_2, p_1, p_2)$-sensitive* if:
+- If $d(x, y) <= d_1$, then $P(f(x) = f(y)) >= p_1$ (Close things likely collide).
+- If $d(x, y) >= d_2$, then $P(f(x) = f(y)) <= p_2$ (Far things unlikely collide).
+
+We can amplify these properties:
+- *AND Construction:* $f'(x) = f'(y)$ iff all $r$ functions match. It makes the probability $p^r$.
+- *OR Construction:* Use bands to make it $1 - (1 - p)^b$.
+
+ trying to use "OR" rather than "AND" to see how the probability changes... (need to finish this part)
+
+
+
+
+
