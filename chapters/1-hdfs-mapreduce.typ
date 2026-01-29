@@ -16,6 +16,7 @@ In general, we talk about *big data* when something that worked with a "normal" 
 
 #note[
   We will work with datasets typically divided into "can/can't fit in *main memory* (RAM)" and "can/can't fit in *disk*".
+  MapReduce is designed for data that is extremely regular and where there is ample opportunity to exploit parallelism.
 ]
 
 We could think of buying more _powerful_ hardware to manage this data.
@@ -225,12 +226,14 @@ We need to _store_ and _process_ the data in a _distributed file system_ using _
   With $m = 10^9$, the matrix would be too big to be storable, while the vector is around $8"GB"$, so storable even in RAM.
 ]
 
-=== Example: Matrix Vector Multiplication V2
+=== Example: Matrix Vector Multiplication V2 (Stripes)
 
 Same example as before, but now even the vector $underline(v)$ is NOT storable in memory.
 The assumption is that only *half* of $underline(v)$ is storable in RAM.
 
 To leverage a mathematical property we split both the vector into upper $v_u$ and lower $v_l$ and the matrix into left $A_L$ and right $A_R$.
+We divide the matrix into vertical *stripes* of equal width and the vector into an equal number of horizontal stripes.
+
 The halves are compatible, as the number of columns of the half matrix is the same as the number of rows of the half vector _(the vector is the mathematical object, so represented vertically)_.
 The final product is the *sum* of the multiplication of the two halves *independently*:
 $ [A_L | A_R] dot [underline(v)_u / underline(v)_l] = A_L underline(v)_u + A_R underline(v)_l $
@@ -283,19 +286,23 @@ If the relation is too big, then we can't use a traditional DBMS, but we can use
     Multiple values with the same key $t$ are generated only when multiple rows with the same exact content exist (no primary key exists in the table).
   ]
 
-/ Projection $pi_(A,B) (R)$: the map job filters the columns, while the reduce step returns the data as it is
+/ Projection $pi_(A,B) (R)$: the map job filters the columns, while the reduce step returns the data as it is.
   $
     t in R -> #rect[MAP] -> (t', t')
   $
   $ (t', [t', ..., t']) -> #rect[REDUCE] -> (t', t') $
   #note[
     The map function extracts only the requested attributes $A, B$ from tuple $t$, producing $t'$.
+    *Crucial Step:* The Reduce function performs *duplicate elimination*. Since Projection can result in identical tuples, the Reducer receives $[t', t', ...]$ and must output a single $t'$ for *Set* semantics.
   ]
 
-/ Union $R union S$: multiple map functions exist, one for the relation $R$ and one for relation $S$. Both map functions output tuples that get shuffled to reduce functions that output them
+/ Union $R union S$: multiple map functions exist, one for the relation $R$ and one for relation $S$. Both map functions output tuples that get shuffled to reduce functions that output them.
   $ t in R -> #rect[MAP] -> (t, t) $
   $ t in S -> #rect[MAP] -> (t, t) $
   $ (t, [t, ..., t]) -> #rect[REDUCE] -> (t, t) $
+  #note[
+    Similar to projection, the Reducer handles duplicate elimination for *Set Union*. For *Bag Union*, the reducer would output all instances.
+  ]
 
 / Difference $R \\ S$:
   we need to differentiate the tuples that come from R and the tuples that come from S.
@@ -316,6 +323,9 @@ If the relation is too big, then we can't use a traditional DBMS, but we can use
   The attributes with the same key $a$ are shuffled to the same node, so the aggregation can be performed.
   $ forall (a, b) in R --> #rect[MAP] --> (a, b) $
   $ (a, [b_1, ..., b_m]) --> #rect[REDUCE] --> (a, theta(b_1, ..., b_m)) $
+  #note[
+    The reducer receives the list of values $b_1...b_m$ and applies the aggregation operator $theta$ (e.g., SUM, MAX, COUNT).
+  ]
 
 / Join $R(A, B) join S(B, C)$: two relations should share an attribute to generate tuples $(a, b, c)$.
 
@@ -342,14 +352,15 @@ If the relation is too big, then we can't use a traditional DBMS, but we can use
 
   $ (b, [(a_1, \'R\'), (c_8, \'S\'), (a_3, \'R\'), ...]) --> #rect[REDUCE] --> (a, b, c) forall a forall c $
 
-=== Example: Matrix Matrix Multiplication
+=== Example: Matrix Matrix Multiplication (2-Step)
 
 The same approach can be used to perform a matrix-matrix multiplication.
 
 Given two matrices with one common dimension $A_(m times n), B_(n times o)$, the resulting matrix $P$ will be:
 $ P = A dot B, quad P_(i j) = sum_(k=1)^n a_(i k) b_(k j) $
 
-We can transform this problem into a _natural join_, treating the two matrices as _tables_ with three attributes $("row", "column", "value")$ with the common dimension as the _common attribute_ on which to join:
+We can transform this problem into a _natural join_ followed by _grouping and aggregation_.
+Treat the two matrices as _tables_ with three attributes $("row", "column", "value")$ with the common dimension as the _common attribute_ on which to join:
 $ A(I, K, V) in.rev (i, k, a_(i k)) $
 $ B(K, J, W) in.rev (k, j, b_(k j)) $
 
@@ -391,9 +402,9 @@ $
   ((i, j), underbrace([(a_(i 1) b_(1 j)), ..., (a_(i k) b_(k j))], S)) --> #rect[REDUCE2] --> ((i, j), underbrace(sum S, = P_(i j)))
 $
 
-This approach uses *two* concatenated MapReduce jobs.
+This approach uses *two* concatenated MapReduce jobs (Join + Grouping).
 
-=== Example: Matrix Matrix Multiplication V2
+=== Example: Matrix Matrix Multiplication (1-Step)
 
 We can do better in terms of number of MapReduce jobs: using only one.
 
@@ -437,10 +448,10 @@ The complexity of that system is the number of _things_ that _travel_ through th
 
 To compute this count, we can simply sum the _sizes of all inputs_ to nodes.
 The only thing we do _not_ get counted with this approach is the _final output_.
-But the cost of the final output is _negligible_ (as we cannot reduce it, it is the output!).
+But the cost of the final output is _negligible_ (as we cannot reduce it, it is the output, and usually aggregated/summarized).
 
 #note[
-  This is *not* true in Hadoop DFS, as the input for the first computation is handled _locally_ on the same machine where the chunk is stored, so it does _not_ travel through the network.
+  This is *not* true in Hadoop DFS, as the input for the first computation is handled _locally_ on the same machine where the chunk is stored (Data Locality), so it does _not_ travel through the network.
   But that's true in other modern frameworks, such as Spark.
 ]
 
@@ -501,9 +512,9 @@ But the cost of the final output is _negligible_ (as we cannot reduce it, it is 
   Complexity of the approach:
   - _Map phase_ input: all rows for all tables $s + r + t$
   - _Reduce phase input_ (output of map):
-    - for $S$ relation: $s$
-    - for $R$ relation: $r dot n_C$
-    - for $T$ relation: $t dot n_B$
+    - for $S$ relation: $s$ (sent to exactly one reducer)
+    - for $R$ relation: $r dot n_C$ (replicated to all candidate C buckets)
+    - for $T$ relation: $t dot n_B$ (replicated to all candidate B buckets)
 
   The total complexity becomes:
   $ O(r + 2s + t + r n_C + t n_B) $
