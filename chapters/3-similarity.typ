@@ -326,9 +326,220 @@ $ underbrace(PP(S "and" T "match in at least one band"), = S "and" T "are not fi
 
 The pairs that does not get filtered will continue the process into finding similar pairs.
 
+#warning[
+  This is an approximation algorithm, it returns an approximate solution:
+  - False Positive (FP): a pair that passes the LSH filter but is not similar
+  - False Negative (FN): similar documents that does not pass LSH
+
+  False Positives are not a big problem, the pairs that passes the filter are then processed anyway, we their similarity will be calculated in any case.
+]
+
+We need to fix a *treshold* over which the pairs are similar and below that are discarded.
+We can leverage the shape of the function $p$ to change this treshold.
+
 The $p$ function has a sigmoid like shape between $0$ and $1$ with $s$ on the $x$ axis.
 A sigmoid is a continous relaxation of a treshold.
 On that function we could fix a treshold $t$ in an analytic way.
 
 A sigmoid starts with a flat function, then it starts increasing with a certain rate, until it stops increasing and stops increasing.
 To fint a decent treshold, we can compute the first derivative and find the steepest point of the function (where it changes steepness) and use that as treshold $t$.
+
+$ ... $
+
+Plotting out the first derivative we get a bell.
+To find the maximum of that we calculate the second derivative and nullify it.
+$
+  (r-1) s^(r-2) (1-s^r) = (b-1) r s^(2r ) \
+  (r-1)/r = (s^r)/(1-s^r) (b-1)
+$
+
+The root of that are very complex, we consider an approximation.
+$ s^* = (1/b)^(1/r) $
+
+$ (r-1)/r = (1/b)/(1-(1/b)) (b-1) $
+
+So we can fix a similarity treshold $t$ (the maximul of the first derivative):
+$ t = (1/b)^(1/r) $
+
+We need to fix the parameters of LSH $b$ and $r$ so that the treshold is equal to $t$ (keeping the constrait that $b r = n$)
+
+#informally[
+  Recap:
+  - we start from documents
+  - preprocess: whatever (we strip out stop words, ...)
+  - we decide the shingles
+  - based on that we decide $k$ for $k$-grams
+  - we create the signature matrix, choosing $n$ (the number of hash functions or rows of the matrix)
+  - we decide the parameters $b$ and $r$ so that we have the best treshold $t$
+  - we apply LSH with $b$ adn $r$
+  - some documents will pass LSH (with treshold $t$), some not
+  - compute the similarity of documents that passed LSH
+]
+
+What happens if the document is not a string? E.g. a vector of values.
+
+The encoding in terms of set and the Jaccard similarity could not be efficient anymore.
+We need to *abstract* the process.
+
+== Generalized Process
+
+Given pairs of encoded documents, we want to calculate their similarity.
+Instead of similarity, we can think of *distance* (similar objects are close).
+The distance functions takes a pair and returns a value:
+$ d : X times X -> RR $
+Where some properties are verified:
++ $forall x, y in X, quad d(x, y) >= 0, quad d(x, y) = 0 space <--> space x = y$
++ commutativity: $forall x, y in X, quad d(x, y) = d(y, x)$
++ triangle inequaltiy: $forall x, y, z in X, quad d(x, y) <= d(x, z) + d(z, y)$
+
+Distances that work on vectors of real numbers of size $d$: $X = RR^d$.
+These distances are called $L_p$-distances
+$ d(x, y) = (sum_(i=1)^d |x_i - y_i|^p)^(1/p) $
+- Manhattan distance ($p = 1$)
+- Euclidian distance ($p = 2$)
+
+#note[
+  Proving the three properties for these is pretty trivial.
+]
+
+// TODO: what are L_p distances? What have to do with the Contour plot?
+
+Another distance: Jaccard distance // TODO: what is that used for?
+$ d(A, B) = 1 - J(A, B) $
+
+#note[
+  Proving the first two properties is pretty easy.
+  The triangle disequality is a bit tricky.
+
+  #proof[
+    Because of how the similarity is defined, we can rewrite the distance as:
+    $ d(A, B) = PP(H(A) != H(B)) $
+    We can intoduce a thrid element $C$:
+    $ H(A) != H(B) --> H(A) != H(C) or H(B) != H(C) $
+
+    #note[
+      Two trivial probability properties:
+      - $A --> B$ means $PP(A) <= PP(B)$
+      - $PP(A union B) <= P(A) + P(B)$
+    ]
+
+    $
+      PP(H(A) != H(B)) <= PP(H(A) != H(C) union H(B) != H(C)) \
+      PP(H(A) != H(B)) <= PP(H(A) != H(C)) + PP(H(B) != H(C))
+    $
+  ]
+]
+
+Distance taht can be used on vectors with common origin (directions on the space): *Cosine* distance.
+Given two vectors $x$ and $y$ with angle $theta$:
+$ d(x, y) = theta_(x y) = arccos (x y)/(||x|| ||y||) $
+
+#note[
+  Two vectors with the same direction but different magnitude are considered the same vector.
+]
+
+#informally[
+  A simple trick to check if a space is Euclidian is to check if the midpoint between two elements is a point of the space.
+
+  E.g. Strings.
+]
+
+For strings: Lehvehnstein distance.
+Repeatedly apply one of the operations:
+- adding character
+- modifying character
+- deleting character
+the distance is the minimum numner of operations to get from one string to another.
+
+For binary words with same length: Hamming distance:
+Number of positions with different bits between two binary words.
+
+#note[
+  Hamming distance can be generalized over any alphabet e.g. "sad" vs "sun" would give distance $2$.
+]
+
+== LSH with Generic Distance
+
+The LSH method divided documents into bands and then two documents were similar if two document shared the same band, with probability:
+$ PP(f(x) = f(y)) $
+
+We needed a family of min hash functions for that end.
+
+We define a property that we would like for our families of hash function.\
+The family $cal(F)$ is $(d_1, d_2, p_1, p_2)$-sensitive if (where $d_1, d_2$ refer to distances and $p_1, p_2$ refer to probabilities):
+$
+  forall f in cal(F), quad forall x, y in X, \
+  d(x, y) <= d_1 --> PP(f(x) = f(y)) >= p_1 \
+  d(x, y) >= d_2 --> PP(f(x) = f(y)) <= p_2
+$
+
+#note[
+  We talk of probability because we have some randomness in the family.
+]
+
+#example[
+  $cal(F)$: min hash, $d$: Jaccard
+  $
+    d(x, y) <= d_1 --> 1- J(x, y) <= d_1 \
+    J(x, y) >= 1- d_1 --> PP(h(x) = h(y)) >= underbrace(1 - d_1, = p_1)
+  $
+  with $h$ being one random hash function from the family.
+
+  This proves that this follows the property.
+]
+
+=== $"AND"$-Construction
+
+Given a $cal(F)$, we want to get an $cal(F)_"and"$ that is better in terms of $(d_1, d_2, p_1, p_2)$
+
+#note[
+  $cal(F)$ can be both finite and infinite
+]
+
+$ cal(F) = {f_1, f_2, ...} $
+Propertly elaborating the functions in $cal(F)$ we can get to a $cal(F)_"and"$ family.
+We want to extract $r in NN$ functions from $cal(F)$ (not in order):
+$ f' in cal(F)_"and" -> f' = (f_1 in cal(F), ..., f_r in cal(F)) $
+
+We are only interested in $PP(f(x) = f(y))$:
+$ (f'(x) = f'(y)) <--> forall j in [1, r] f_(i j)(x) = f_(i j)(y) $
+
+Why do we do this?
+We have $cal(F)$ that enjoys the property, but we are not satisfied by the values of $p_1, p_2$.
+
+$
+  PP(f'(x) = f'(y)) = PP(inter.big_(j=1)^r {f_(i j)(x) = f_(i j)(y)}) = product_(j=1)^r underbrace(PP(f_(i j)(x) = f_(i j)(y)), >= p_1) >= p_1
+$
+
+...
+
+$ d(x, y) <= d_1 --> PP(f'(x) = f'(y)) >= p_1^r $
+$ d(x, y) >= d_2 --> PP(f'(x) = f'(y)) <= p_2^r $
+
+...
+
+$ f'(x) = f'(y) <--> exists j = 1, r f_(i j)(x) = f_(i j)(y) $
+$
+  forall j quad d(x, y) <= d_1 --> & PP(f_(i j)(x) = f_(i j)(y)) >= p_1 \
+                                   & PP(f_(i j)(x) != f_(i j)(y)) <= 1 - p_1
+$
+
+$ PP(forall j space { f_(i j)(x) != f_(i j)(y)}) = product_(j = 1)^r PP(f_(i j) f(x) != f_(i j)(y)) $
+
+So:
+$
+    d(x, y) <= d_1, \
+  PP(f'(x) = f'(y)) & = PP(exists j f_(i j)(x) = f_(i j)(y)) \
+                    & = 1 - PP(forall j f_(i j)(x) != f_(i j)(y)) \
+                    & >= 1 - ( 1- p_1)^r
+$
+
+The analogous thing can be done with the other parts of the property (with $d_2$ and $p_2$).
+
+#informally[
+  Recap: if $x$ and $y$ are similar (less than $d_1$), using my original family o function I woul have that the prob that selecting them was higher tha $p_1$.
+  Now using the extended family, the probabolity of selecting them is $1 - ( 1- p_1)^r$.
+
+  We can increase the probability at the cost of increasing also the other treshold.
+]
+
