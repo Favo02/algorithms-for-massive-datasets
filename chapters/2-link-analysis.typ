@@ -7,15 +7,15 @@
 We analyze a _real world_ problem that requires the use of distributed computation (and thus MapReduce).
 
 A *Search Engine*: given a _query_, it returns a list of _web pages_, sorted by _relevancy_.
-Given the enourmous amount of web pages, no matter the query, multiple results will match that query.
-Some results will be more relevant, other less relevant, and some even not relevant at all.
+Given the enormous amount of web pages, no matter the query, multiple results will match that query.
+Some results will be more relevant, others less relevant, and some even not relevant at all.
 The goal of the search engine is to list pages that are relevant first.
 
 / First Approach\: Endogenous:
-  The relevance is determined by some information stored *inside* the pages themself, as metadata, tags or terms.
+  The relevance is determined by some information stored *inside* the pages themselves, as metadata, tags or terms.
 
-  That was the idea implemented by _early web engines_, but consisted of a huge problem: it is easily exploitable.
-  *Web spammers* could simply include all the most searched terms in the page, even if completely _unrelated_ to the real content of the page, making the search engire return their page.
+  That was the idea implemented by _early web engines_, but it posed a huge problem: it is easily exploitable.
+  *Web spammers* could simply include all the most searched terms in the page, even if completely _unrelated_ to the real content of the page, making the search engine return their page.
 
 / Second Approach\: Exogenous:
   To solve this problem, we can use information that lives *outside* the page itself: the *links* connecting the web pages.
@@ -40,9 +40,9 @@ Some formalization is needed.
 / Row-wise (RWS) and Column-wise (CWS) Stochastic Matrix: A matrix is row (or column)-wise stochastic if and only if:
   - the sum of each row (or column) is $1$
   - there are no negative entries
-  Each row (or column) of these matrices describe a _probability distribution_.
+  Each row (or column) of these matrices describes a _probability distribution_.
 
-/ Transition matrix $M$: The graph is represented by a Transition Matrix, where the entries denotes the presence/absence of an edge, with source node $s$ on columns and destination nodes $d$ on rows:
+/ Transition matrix $M$: The graph is represented by a Transition Matrix, where the entries denote the presence/absence of an edge, with source node $s$ on columns and destination nodes $d$ on rows:
   $
     M_(d s) = cases(
       0 quad & "if" exists.not space "edge" s -> d,
@@ -114,7 +114,7 @@ This means the surfers are *not* anymore _equally_ distributed and the probabili
 This process goes on until it *converges* _(if it does)_.
 The resulting probabilities can be interpreted as the _importance_ of that node in the graph: the _higher_ the probability is, the more important the page is.
 
-Once again, some formalization and algebraic concepts are needed to proof the convergence.
+Once again, some formalization and algebraic concepts are needed to prove the convergence.
 
 / Vector $underline(v)(t)$: Vector of the probabilities that a surfer is over the node $i$ at time $t$.
   $ underline(v)_(i)(t) = PP("surfer over node" i "at time" t) $
@@ -128,14 +128,14 @@ Once again, some formalization and algebraic concepts are needed to proof the co
   $ underline(v)_(i)(0) = 1/n space forall i in n = PP("surfer over" i "at time" 0) $
   $
     underline(v)_(i)(t+1) & = PP(union.big("surfer over" j "at time" t, "moving from" j "to" i)) #<random-surfing-union-to-sum> \
-    & = underbrace(sum_j PP(j -> i | "surfer over" j "at time" t), M_(i j) space ("fixed for any time" t)) dot underbrace(PP("surver over" j "at time" t), v_(j)(t)) #<random-surfing-chain-rule> \
+    & = underbrace(sum_j PP(j -> i | "surfer over" j "at time" t), M_(i j) space ("fixed for any time" t)) dot underbrace(PP("surfer over" j "at time" t), v_(j)(t)) #<random-surfing-chain-rule> \
     & = sum_j M_(i j) dot v_(j)(t)
   $
 
   #note[
     The probability of the union of _disjoint_ events is equal to their sum (#link-equation(<random-surfing-union-to-sum>)).
 
-    The probability of each event can be destructured using the #link("https://en.wikipedia.org/wiki/Chain_rule_(probability)")[chain rule] (#link-equation(<random-surfing-chain-rule>)).
+    The probability of each event can be decomposed using the #link("https://en.wikipedia.org/wiki/Chain_rule_(probability)")[chain rule] (#link-equation(<random-surfing-chain-rule>)).
   ]
 
   The whole vector can be updated for each step with a single *matrix-vector product*:
@@ -144,7 +144,7 @@ Once again, some formalization and algebraic concepts are needed to proof the co
   This can be implemented with a very simple _infinite_ while loop.
   The *stopping* mechanism can be implemented in two ways:
   - stopping at a _fixed_ iteration number
-  - compute the _absolute difference_ between each iteration and when it goes below an $epsilon$ then stop
+  - compute the _absolute difference_ between iterations and stop when it goes below an $epsilon$
 
   #example[
     The number of existing web pages is around $10^9$.
@@ -158,7 +158,7 @@ Once again, some formalization and algebraic concepts are needed to proof the co
   $ A underline(e) = lambda underline(e) $ <eigenvalue-definition>
 
   #note[
-    A matrix is a _linear transformation_ for a vector (their product results in another vector).
+    A matrix is a _linear transformation_ of a vector (their product results in another vector).
 
     If applying the linear transformation ($A$) to the vector $underline(e)$, the _direction_ of the vector is _unchanged_ or _reversed_ (it gets only scaled by a constant quantity $lambda$), then $underline(e)$ is an eigenvector for the matrix $A$ and $lambda$ its eigenvalue.
   ]
@@ -187,7 +187,7 @@ Once again, some formalization and algebraic concepts are needed to proof the co
     - the main _eigenvalue_ should be $lambda_1 = 1$ (#link-teorema(<random-surfing-principal-eigenvalue-1>))
     - a CWS matrix admits $lambda = 1$ as eigenvalue (#link-teorema(<random-surfing-admits-lambda>))
     - a matrix and its transpose share the same eigenvalues (#link-teorema(<random-surfing-transpose-eigenvalues>))
-    - the product of a matrix $A^k$ produce $lambda^k$ eigenvalue (#link-teorema(<random-surfing-power-eigenvalues>))
+    - the product of a matrix $A^k$ produces $lambda^k$ eigenvalue (#link-teorema(<random-surfing-power-eigenvalues>))
     - given a RWS matrix $A$, $A^k$ is still RWS (#link-teorema(<random-surfing-ak-still-rws>))
     - the principal eigenvalue of a CWS matrix is $lambda_1 = 1$ (#link-teorema(<random-surfing-lambda-1>))
 
@@ -195,7 +195,7 @@ Once again, some formalization and algebraic concepts are needed to proof the co
   ]
 ]
 
-_The intermediate results shown below are commented with some _informal_ reasoning on why are we pursuing that result._
+_The intermediate results shown below are commented with some _informal_ reasoning on why we are pursuing that result._
 
 #theorem("Theorem (Power Method)")[
   When $t$ increases, the vector $underline(v)(t)$ *aligns* with the $lambda_1^t a_1 underline(e)_1$.
@@ -256,7 +256,7 @@ _When is that result useful? We need to calculate the importance of the pages, t
   ]
 ] <random-surfing-principal-eigenvalue-1>
 
-_Does the matrix $A$ even admits $lambda = 1$ as eigenvalue?_
+_Does the matrix $A$ even admit $lambda = 1$ as eigenvalue?_
 
 #theorem("Theorem")[
   A column-wise stochastic (CWS) matrix $A$ admits $lambda = 1$ as an eigenvalue.
@@ -277,7 +277,7 @@ _Does the matrix $A$ even admits $lambda = 1$ as eigenvalue?_
 ] <random-surfing-admits-lambda>
 
 _We just showed that $lambda = 1$ is an eigenvalue for $A$, but is it the principal one?
-For this we need another two intermediate result on matrices._
+For this we need two more intermediate results on matrices._
 
 #theorem("Lemma")[
   A matrix $A$ and its transpose $A^T$ share the same *eigenvalues* (not eigenvectors).
@@ -373,11 +373,11 @@ _Result: PageRank always converges if we run it on a column-wise stochastic._
 
 The internet graph is *not* column wise stochastic.
 
-The web resembles a _bowtie_, with as main components:
+The web resembles a _bowtie_, with the following main components:
 - _Strongly connected component_ (SCC): a central part with strongly connected pages
 - _In-bound component_: pages that can reach the SCC (but cannot be reached from the SCC)
 - _Out-bound component_: pages that can be reached from the SCC (but cannot reach the SCC)
-- _Tendrils_: pages that that reach out from the in-bound component or pages that reach in from the out-bound component
+- _Tendrils_: pages that reach out from the in-bound component or pages that reach in from the out-bound component
 - _Tubes_: pages that can reach the out-bound component from the in-bound component
 - _Disconnected components_: isolated pages
 
@@ -386,13 +386,13 @@ The web resembles a _bowtie_, with as main components:
   caption: [Structure of the web],
 )
 
-In particular, exist structural problems that violate the column-wise stochastic property:
+In particular, there are structural problems that violate the column-wise stochastic property:
 - _Dead ends_: nodes with out-degree equal to $0$.
   Surfers reaching dead ends are *trapped* (it is impossible for them to exit the node), causing the total amount of surfers to decrease.
   Over iterations, the number of surfers decreases until the result vector converges to *zero*, making the algorithm useless.
 - _Spider traps_: cycles with no outgoing edges to *other components*.
   Once surfers enter a spider trap, they remain trapped indefinitely.
-  Eventually, all surfers will end un *in the trap*, skewing the importance ranking.
+  Eventually, all surfers will end up *in the trap*, skewing the importance ranking.
 
 Both issues prevent the transition matrix from being column-wise stochastic, breaking the convergence guarantee.
 The solution is to introduce *teleportation*.
@@ -426,13 +426,13 @@ Even a simpler query like _"Jaguar"_ has multiple meanings:
 + the MacOS operating system version
 
 #note[
-  To overcome this problem, _Yahoo_ used to work differently that _Google_: each query was also paired with a _category_.
+  To overcome this problem, _Yahoo_ used to work differently than _Google_: each query was also paired with a _category_.
   Below the query box, there was a taxonomy (a tree) of categories and only after selecting a leaf of that taxonomy the results were displayed.
 ]
 
 We need to *tailor* the search engine for each *user*.
 
-The _trivial_ idea to run a custom PageRank instance for _every user_ is obvious not feasible as the number of users is around 1 billion.
+The _trivial_ idea to run a custom PageRank instance for _every user_ is obviously not feasible as the number of users is around 1 billion.
 We can do user *clustering*, based on their interests (categories).
 
 We focus on rather a low number of categories (sports, language, religion, ...): $16$.
@@ -445,12 +445,12 @@ Two main ingredients are needed:
   Ignoring the fact that most search engines work paired with an _account_ (and so the interests can be deduced by analyzing emails or social media posts), we can just _ask_ the user.
 ]
 
-Each user is represented by a 16 bits number, each $1$ means the user in interested in that category (a bitmask).
+Each user is represented by a 16 bits number, each $1$ means the user is interested in that category (a bitmask).
 There are $2^16 = 65536$ *groups* of users with the same interests, a reasonable amount of instances of PageRank to execute.
 
 But how do we modify PageRank to align with the interests of a user?
 Only modifying the _teleportation_ process is enough, leaving the _random surfing_ unchanged.
-Surfers gets *teleported* only to pages the user is *interested* in.
+Surfers get *teleported* only to pages the user is *interested* in.
 
 Formally, given a bitmask representing the user's interests, let $S$ denote the set of pages matching those categories:
 $ S = {"pages of interest"} $
@@ -475,7 +475,7 @@ Surfers now teleport only to pages matching the user's interests, biasing the ra
 We now take the perspective of _adversaries_: how can we artificially boost a page's ranking?
 
 #note[
-  In this scenario, we are simple users of the web (who can create web page), we do not have control over the algorithm itself.
+  In this scenario, we are simple users of the web (who can create web pages), we do not have control over the algorithm itself.
 ]
 
 === Attack: Spam Farm
@@ -518,7 +518,7 @@ $
 Solving for $"PR"(t)$:
 $ "PR"(t) = x / (1-beta^2) + cancel(beta /(1+beta) underbrace(m / n, "really small")) $
 
-With a tipical $beta = 0.85$, the factor $frac(1, 1-beta^2) approx 3.6$, meaning the incoming score $x$ is *amplified* $3.6$ times.
+With a typical $beta = 0.85$, the factor $frac(1, 1-beta^2) approx 3.6$, meaning the incoming score $x$ is *amplified* $3.6$ times.
 
 #note[
   This calculation is a _lower bound_, the real amplification is even bigger (due to the terms we ignored).
@@ -529,7 +529,7 @@ PageRank is *vulnerable* to such attacks, however, spam farms follow *recognizab
 === Defense: TrustRank
 
 Rather than trying to recognize spam farms, another approach can be used: determining if a page is _trustworthy_.
-We assign each page a *trust score* (continuous, not binary) and *restrict teleportation* to trusted pages (pages with trust score above a treshold).
+We assign each page a *trust score* (continuous, not binary) and *restrict teleportation* to trusted pages (pages with trust score above a threshold).
 This can be achieved using the same mechanism used by the _Topic-Sensitive PageRank_:
 
 $ underline(v)(t+1) = beta M underline(v)(t) + (1-beta) underline(e)_S / (|S|) $
