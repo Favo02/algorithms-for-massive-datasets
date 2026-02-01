@@ -197,7 +197,7 @@ All the system has to do is to recompute only the computation done by the _singl
   Because of that, the map nodes should store the _temporary_ results of the map phase until the _whole_ computation is over.
 ]
 
-=== Example: Matrix Vector Multiplication
+=== Example: Matrix Vector Multiplication <matrix-vector-multiplication>
 
 Given:
 - a matrix $A = [a_(i j)]_(m times m)$ too big to be stored
