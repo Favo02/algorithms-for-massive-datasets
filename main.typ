@@ -30,4 +30,5 @@
   ],
 )
 
+#include "chapters/1-hdfs-mapreduce.typ"
 #include "chapters/2-link-analysis.typ"
