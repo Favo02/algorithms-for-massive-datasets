@@ -25,7 +25,7 @@ The goal of the search engine is to list pages that are relevant first.
   To calculate the importance of that other page the same process needs to be _reapplied_.
   This generates an _infinite recursion_.
 
-  #nota[
+  #note[
     While this approach mostly solves the problem of web spammers, some other ways to manipulate the results have been invented (such as link spam).
   ]
 
@@ -49,7 +49,7 @@ Some formalization is needed.
   The transition matrix is a _column-wise stochastic_ matrix.
   Each column is a _probability distribution_ and it denotes the destination of a surfer during the _random surfing process_ described below.
 
-  #esempio[
+  #example[
     #figure(
       grid(
         columns: 2,
@@ -116,7 +116,7 @@ Once again, some formalization and algebraic concepts are needed to proof the co
 / Vector $underline(v)(t)$: Vector of the probabilities that a surfer is over the node $i$ at time $t$.
   $ underline(v)_(i)(t) = PP("surfer over node" i "at time" t) $
 
-  #nota[
+  #note[
     The matrix $M$ and vector $underline(v)$ are *compatible* for product.
   ]
 
@@ -129,7 +129,7 @@ Once again, some formalization and algebraic concepts are needed to proof the co
     & = sum_j M_(i j) dot v_(j)(t)
   $
 
-  #nota[
+  #note[
     The probability of the union of _disjoint_ events is equal to their sum (#link-equation(<random-surfing-union-to-sum>)).
 
     The probability of each event can be destructured using the #link("https://en.wikipedia.org/wiki/Chain_rule_(probability)")[chain rule] (#link-equation(<random-surfing-chain-rule>)).
@@ -143,7 +143,7 @@ Once again, some formalization and algebraic concepts are needed to proof the co
   - stopping at a _fixed_ iteration number
   - compute the _absolute difference_ between each iteration and when it goes below an $epsilon$ then stop
 
-  #esempio[
+  #example[
     The number of existing web pages is around $10^9$.
     The matrix $M$ is around $10^18$ entries ($approx 8000000 "TB"$), while the vector $underline(v)$ is $10^9$ entries ($approx 8 "GB"$).
 
@@ -154,7 +154,7 @@ Once again, some formalization and algebraic concepts are needed to proof the co
   Given a square matrix $A$, we denote as $lambda$ an _eigenvalue_ and as $underline(e)$ the corresponding _eigenvector_ (for each eigenvalue one eigenvector exists and vice versa):
   $ A underline(e) = lambda underline(e) $ <eigenvalue-definition>
 
-  #nota[
+  #note[
     A matrix is a _linear transformation_ for a vector (their product results in another vector).
 
     If applying the linear transformation ($A$) to the vector $underline(e)$, the _direction_ of the vector is _unchanged_ or _reversed_ (it gets only scaled by a constant quantity $lambda$), then $underline(e)$ is an eigenvector for the matrix $A$ and $lambda$ its eigenvalue.
@@ -168,17 +168,17 @@ Once again, some formalization and algebraic concepts are needed to proof the co
   The $n$ eigenvectors form a _linear basis_ for the $n$-dimensional vector space $RR^n$.
   $ {e_1, ..., e_n} = "linear basis" $
 
-  #nota[
+  #note[
     Linear basis: each single possible vector of that space can be expressed as a linear combination (sum of scaled versions) of the basis vectors. This means any vector $underline(v) in RR^n$ can be written as $underline(v) = alpha_1 underline(e)_1 + ... + alpha_n underline(e)_n$ for some scalars $alpha_1, ..., alpha_n$.
   ]
 
 == Convergence of Random Surfing
 
-#teorema("Theorem")[
+#theorem("Theorem")[
   The random surfing process will *converge* on a CWS matrix.
   In other words, the vector $underline(v)$ will converge to a _non-null_ value.
 
-  #dimostrazione[
+  #proof[
     For this proof, we need a few intermediate results:
     - the vector $underline(v)$ aligns with $lambda_1^t a_1 underline(e)_1$ (#link-teorema(<random-surfing-power-method>))
     - the main _eigenvalue_ should be $lambda_1 = 1$ (#link-teorema(<random-surfing-principal-eigenvalue-1>))
@@ -194,10 +194,10 @@ Once again, some formalization and algebraic concepts are needed to proof the co
 
 _The intermediate results shown below are commented with some _informal_ reasoning on why are we pursuing that result._
 
-#teorema("Theorem (Power Method)")[
+#theorem("Theorem (Power Method)")[
   When $t$ increases, the vector $underline(v)(t)$ *aligns* with the $lambda_1^t a_1 underline(e)_1$.
 
-  #dimostrazione[
+  #proof[
     Because $underline(v) in RR^n$, then we can rewrite it as a _linear combination_ of the basis:
     $ underline(v)(0) = alpha_(1) underline(e)_1 + ... + alpha_n underline(e)_n $
 
@@ -225,7 +225,7 @@ _The intermediate results shown below are commented with some _informal_ reasoni
                                   & = lambda_1^t a_1 underline(e)_1 space qed
     $
 
-    #attenzione[
+    #warning[
       We cannot speak of _convergence_ as $t$ is still in the equation, so we say _align_.
     ]
   ]
@@ -233,10 +233,10 @@ _The intermediate results shown below are commented with some _informal_ reasoni
 
 _When is that result useful? We need to calculate the importance of the pages, the vector must converge._
 
-#teorema("Theorem")[
+#theorem("Theorem")[
   The algorithm will be _useful_ only when the principal eigenvalue of the matrix $A$ is $lambda_1 = 1$.
 
-  #dimostrazione[
+  #proof[
     Let's analyze the behaviour of $lambda_1$ when $t$ increases:
     $
       lambda_1^t =_(t->infinity) cases(
@@ -255,10 +255,10 @@ _When is that result useful? We need to calculate the importance of the pages, t
 
 _Does the matrix $A$ even admits $lambda = 1$ as eigenvalue?_
 
-#teorema("Theorem")[
+#theorem("Theorem")[
   A column-wise stochastic (CWS) matrix $A$ admits $lambda = 1$ as an eigenvalue.
 
-  #dimostrazione[
+  #proof[
     A CWS matrix has the property that each column sums to $1$:
     $ sum_i A_(i j) = 1 quad forall j $
 
@@ -276,23 +276,23 @@ _Does the matrix $A$ even admits $lambda = 1$ as eigenvalue?_
 _We just showed that $lambda = 1$ is an eigenvalue for $A$, but is it the principal one?
 For this we need another two intermediate result on matrices._
 
-#teorema("Lemma")[
+#theorem("Lemma")[
   A matrix $A$ and its transpose $A^T$ share the same *eigenvalues* (not eigenvectors).
   $ A underline(w) = lambda underline(w) $
   $ A^T underline(u) = lambda underline(u) $
 ] <random-surfing-transpose-eigenvalues>
 
-#teorema("Lemma")[
+#theorem("Lemma")[
   If $underline(w)$ is an eigenvector of matrix $A$ with eigenvalue $lambda$, then:
   $ A underline(w) = lambda underline(w) $
   $ A^k underline(w) = lambda^k underline(w) $
   for any positive integer $k$.
 ] <random-surfing-power-eigenvalues>
 
-#teorema("Theorem")[
+#theorem("Theorem")[
   If a matrix $A$ is row-wise stochastic (RWS), then $A^k$ is also RWS for any positive integer $k$.
 
-  #nota[
+  #note[
     - $a_(i j)$: element of the original matrix $A$
 
     - $a_(i j)^((k))$: element of the matrix $A^(k)$
@@ -300,7 +300,7 @@ For this we need another two intermediate result on matrices._
     - $a_(i j)^((k+1))$: element of the matrix $A^(k+1)$
   ]
 
-  #dimostrazione[
+  #proof[
     We prove by induction on $k$.
 
     / Base case ($k = 1$): $A^1 = A$ is RWS by assumption $qed$.
@@ -327,10 +327,10 @@ For this we need another two intermediate result on matrices._
 
 _Now we can prove that $lambda = 1$ is the _principal_ eigenvalue for a CWS matrix._
 
-#teorema("Theorem")[
+#theorem("Theorem")[
   For a column-wise stochastic (CWS) matrix $A$, the eigenvalue $lambda = 1$ is the principal eigenvalue.
 
-  #dimostrazione[
+  #proof[
     Prove by contradiction: assume there exists an eigenvalue $lambda > 1$:
     $ A underline(u) = lambda underline(u) $
 
@@ -402,7 +402,7 @@ $
 
 The modified matrix is CWS because each column now sums to $1$, guaranteeing that the random surfing process converges to a stable importance ranking.
 
-#nota[
+#note[
   This system works with one assumption: the ranking for pages is the *same* for *all users*.
 ]
 
@@ -429,7 +429,7 @@ This means that every user needs a custom page rank instance.
 There are abount 1 billion users, so that is obviously not feasible.
 The obvious solution is to do some user clusterings.
 
-#nota[
+#note[
   Yahoo worked a little bit different that google: after the query there was also a taxonomy of categories (tree).
   After selecting the leaf of a category, the results were displayed.
 ]
@@ -483,7 +483,7 @@ With this structure and selecting correctly supporting pages, the pagerank rank 
 
 $ y = "PR of" t $
 $ x = "PR from accessible pages" $
-#nota[
+#note[
   Accessible pages will have their PR score.
   After subtracting taxation (teleportation), the rest will be redistributed evenly to the links (so also to our target page): $x$.
 ]
@@ -564,7 +564,7 @@ To compute that we could use the same thing used for PageRank (a matrix multipli
 
 But these matrices are really sparse.
 
-#attenzione[
+#warning[
   This approach will NOT converge, it will *diverge*.
 
   Each component will increase.
@@ -580,7 +580,7 @@ $ underline(a) = mu L^T underline(h) $
 
 We will not use Hadoop (which offers both file system and computing with MapReduce), but a more modern version: Spark.
 
-#attenzione[
+#warning[
   Spark does NOT offer a distrbuted file system, so the storage needs to be handled by another technology.
 ]
 
