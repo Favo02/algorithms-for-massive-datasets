@@ -183,7 +183,7 @@ Once again, some formalization and algebraic concepts are needed to prove the co
 
   #proof[
     For this proof, we need a few intermediate results:
-    - the vector $underline(v)$ aligns with $lambda_1^t a_1 underline(e)_1$ (#link-teorema(<random-surfing-power-method>))
+    - the vector $underline(v)$ aligns with $lambda_1^t alpha_1 underline(e)_1$ (#link-teorema(<random-surfing-power-method>))
     - the main _eigenvalue_ should be $lambda_1 = 1$ (#link-teorema(<random-surfing-principal-eigenvalue-1>))
     - a CWS matrix admits $lambda = 1$ as eigenvalue (#link-teorema(<random-surfing-admits-lambda>))
     - a matrix and its transpose share the same eigenvalues (#link-teorema(<random-surfing-transpose-eigenvalues>))
