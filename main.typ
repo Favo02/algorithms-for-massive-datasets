@@ -34,7 +34,7 @@
 #include "chapters/1-hdfs-mapreduce.typ"
 #include "chapters/2-link-analysis.typ"
 
+#show: appendix
 #part("Implementation")
-#set heading(numbering: "A.")
 
-#include "chapters/app-a-spark.typ"
+#include "chapters/a-spark.typ"
