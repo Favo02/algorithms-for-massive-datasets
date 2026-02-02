@@ -125,7 +125,7 @@ Once again, some formalization and algebraic concepts are needed to prove the co
 
 
   It can be defined inductively:
-  $ underline(v)_(i)(0) = 1/n space forall i in n = PP("surfer over" i "at time" 0) $
+  $ underline(v)_(i)(0) = 1/n space forall i in "nodes" = PP("surfer over" i "at time" 0) $
   $
     underline(v)_(i)(t+1) & = PP(union.big("surfer over" j "at time" t, "moving from" j "to" i)) #<random-surfing-union-to-sum> \
     & = underbrace(sum_j PP(j -> i | "surfer over" j "at time" t), M_(i j) space ("fixed for any time" t)) dot underbrace(PP("surfer over" j "at time" t), v_(j)(t)) #<random-surfing-chain-rule> \
@@ -198,7 +198,7 @@ Once again, some formalization and algebraic concepts are needed to prove the co
 _The intermediate results shown below are commented with some _informal_ reasoning on why we are pursuing that result._
 
 #theorem("Theorem (Power Method)")[
-  When $t$ increases, the vector $underline(v)(t)$ *aligns* with the $lambda_1^t a_1 underline(e)_1$.
+  When $t$ increases, the vector $underline(v)(t)$ *aligns* with the $lambda_1^t alpha_1 underline(e)_1$.
 
   #proof[
     Because $underline(v) in RR^n$, then we can rewrite it as a _linear combination_ of the basis:
@@ -222,10 +222,10 @@ _The intermediate results shown below are commented with some _informal_ reasoni
     $
 
     Because the eigenvalues are sorted, $lambda_1^t$ will always be the biggest $lambda_n^t$.
-    When $t$ increases, the other terms will go to $0$, meaning the vector will *align* with $lambda_1^t a_1 underline(e)_1$:
+    When $t$ increases, the other terms will go to $0$, meaning the vector will *align* with $lambda_1^t alpha_1 underline(e)_1$:
     $
       underline(v)(t -> infinity) & = lambda_1^t (alpha_1 underline(e)_1 + ... + alpha_n mr(0) underline(e)_n) \
-                                  & = lambda_1^t a_1 underline(e)_1 space qed
+                                  & = lambda_1^t alpha_1 underline(e)_1 space qed
     $
 
     #warning[
@@ -363,7 +363,7 @@ _Now we can prove that $lambda = 1$ is the _principal_ eigenvalue for a CWS matr
   ]
 ] <random-surfing-lambda-1>
 
-_Result: PageRank always converges if we run it on a column-wise stochastic._
+_Result: PageRank always converges if we run it on a column-wise stochastic matrix._
 
 #note[
   PageRank can be generalized to rank any element in a structure representable as a graph, making it applicable to any binary relation.
@@ -404,7 +404,7 @@ This process is called *teleportation* or *taxation* (a part of the surfers is r
 
 This modification transforms the transition matrix into a CWS matrix, ensuring convergence:
 $
-  underline(v)(t+1) = underbrace(beta M underline(v)(t), "same as before") + underbrace((1-beta)[1/n]_n, "each node has the "\ "same probability " 1/n \ "of receiving teleportation") quad beta in [0, 1]
+  underline(v)(t+1) = underbrace(beta M underline(v)(t), "same as before") + underbrace((1-beta)[1/n]_n, "each node has the same probability" 1/n "of receiving teleportation") quad beta in [0, 1]
 $
 
 The modified matrix is CWS because each column now sums to $1$, guaranteeing that the random surfing process converges to a stable importance ranking.
@@ -504,7 +504,7 @@ This creates a closed loop that concentrates PageRank in the target page.
 The PageRank of a *supporting page* $s$ is the sum of PR from pages that link to $s$ (_taxed_ and _divided_ by the number of outgoing links) and the incoming teleportation.
 Because the only page that links to $s$ is the target $t$, the score is:
 $
-  "PR"(s) = "PR"(t)/m underbrace(beta, "tax") + underbrace((1-beta) 1/n, "incoming"\ "teleportation")
+  "PR"(s) = (("PR"(t))/m) underbrace(beta, "tax") + underbrace((1-beta) 1/n, "incoming teleportation")
 $
 
 The PageRank of the *target page* $t$ is:
@@ -512,7 +512,7 @@ The PageRank of the *target page* $t$ is:
 + PR of all supporting pages, taxed
 + incoming teleportation (negligible as $n$ is really big)
 $
-  "PR"(t) = underbrace(x, 1.) + underbrace(m beta ("PR"(t)/m beta + (1-beta) 1/n), 2.) + cancel(underbrace((1-beta) 1/n, 3.))
+  "PR"(t) = underbrace(x, 1.) + underbrace(m beta ((("PR"(t))/m) beta + (1-beta) 1/n), 2.) + cancel(underbrace((1-beta) 1/n, 3.))
 $
 
 Solving for $"PR"(t)$:
