@@ -382,9 +382,107 @@ The web resembles a _bowtie_, with the following main components:
 - _Disconnected components_: isolated pages
 
 #figure(
-  image("../assets/web-structure.png", width: 50%),
+  {
+    set text(size: 8pt)
+
+    align(center, cetz.canvas(
+      {
+        import cetz.draw: *
+        
+        stroke((thickness: 0.5pt))
+        // set-style(stroke: none)
+
+        group(name: "bowtie", {
+        content((0,0), align(center, [Strongly #linebreak() Connected #linebreak() Component]), name: "SCC", frame: "circle", padding: 8pt)
+
+        group(name: "bowtie-left", {
+          line("SCC.north-west", (-3.5, 1.5), name: "bt_l_n")
+          line("SCC.south-west", (-3.5, -1.5), name: "bt_l_s")
+          line("bt_l_n.end", "bt_l_s.end")
+
+          anchor("n_start", "bt_l_n.start")
+          anchor("n_end", "bt_l_n.end")
+          anchor("s_start", "bt_l_s.start")
+          anchor("s_end", "bt_l_s.end")
+        })
+
+        bezier(
+          ("bowtie-left.n_start", 70%, "bowtie-left.n_end"),
+          ("bowtie-left.n_start", 50%, "bowtie-left.n_end"),
+          (rel: (-0.5, 2)),
+          (rel: (0.5, 2)),
+          name: "curve"
+        )
+
+        line((rel: (0.2, -2), to: "curve.mid"), (rel: (0, -0.5), to: "curve.mid"), mark: (end: ">"))
+        content((rel: (0, 0.5), to: "curve.mid"), [Tendrils Out])
+        
+        bezier(
+          ("bowtie-left.s_start", 70%, "bowtie-left.s_end"),
+          ("bowtie-left.s_start", 50%, "bowtie-left.s_end"),
+          (rel: (-0.5, -2)),
+          (rel: (0.5, -2)),
+          name: "curve"
+        )
+
+        line((rel: (0.2, 2), to: "curve.mid"), (rel: (0, 0.5), to: "curve.mid"), mark: (end: ">"))
+        content("bowtie-left.center", align(center, [In #linebreak() Component]))
+
+        // bezier((rel: (0.2, -0.05), to: "bowtie-left.north-west"), (rel: (1, -0.25), to: "bowtie-left.north-west"))
+
+        group(name: "bowtie-right", {
+          line("SCC.north-east", (3.5, 1.5), name: "bt_r_n")
+          line("SCC.south-east", (3.5, -1.5), name: "bt_r_s")
+          line("bt_r_n.end", "bt_r_s.end")
+
+          anchor("n_start", "bt_r_n.start")
+          anchor("n_end", "bt_r_n.end")
+          anchor("s_start", "bt_r_s.start")
+          anchor("s_end", "bt_r_s.end")
+        })
+
+        bezier(
+          ("bowtie-right.n_start", 70%, "bowtie-right.n_end"),
+          ("bowtie-right.n_start", 50%, "bowtie-right.n_end"),
+          (rel: (0.5, 2)),
+          (rel: (-0.5, 2)),
+          name: "curve"
+        )
+
+        line((rel: (-0.2, -2), to: "curve.mid"), (rel: (0, -0.5), to: "curve.mid"), mark: (start: ">"))
+        content((rel: (0, 0.5), to: "curve.mid"), [Tendrils In])
+
+        bezier(
+          ("bowtie-right.s_start", 70%, "bowtie-right.s_end"),
+          ("bowtie-right.s_start", 50%, "bowtie-right.s_end"),
+          (rel: (0.5, -2)),
+          (rel: (-0.5, -2)),
+          name: "curve"
+        )
+
+        line((rel: (-0.2, 2), to: "curve.mid"), (rel: (0, 0.5), to: "curve.mid"), mark: (start: ">"))
+        arc-through(("bowtie-left.s_start", 45%, "bowtie-left.s_end"), (0,-2.5), ("bowtie-right.s_start", 45%, "bowtie-right.s_end"), name: "tube_lower")
+        arc-through(("bowtie-left.s_start", 37.5%, "bowtie-left.s_end"), (0,-2.25), ("bowtie-right.s_start", 37.5%, "bowtie-right.s_end"), stroke: (dash: "dotted"), mark: (end: ">"))
+        arc-through(("bowtie-left.s_start", 30%, "bowtie-left.s_end"), (0,-2), ("bowtie-right.s_start", 30%, "bowtie-right.s_end"))
+        content((rel: (0,-0.5), to: "tube_lower.center"), [Tubes])
+
+        content("bowtie-right.center", align(center, [Out #linebreak() Component]))
+      })
+
+
+        circle((rel: (-1.5, -1), to: "bowtie.south"), radius: (1, 0.5))
+        circle((rel: (1.5, -0.75), to: "bowtie.south"), radius: (1, 0.5))
+        circle((rel: (-0.5, -2.4), to: "bowtie.south"), radius: (1, 0.5))
+
+        content((rel: (3, -1.75), to: "bowtie.south"), [Disconnected #linebreak() Components])
+      })
+    )
+  },
   caption: [Structure of the web],
 )
+
+
+
 
 In particular, there are structural problems that violate the column-wise stochastic property:
 - _Dead ends_: nodes with out-degree equal to $0$.
@@ -497,9 +595,67 @@ The structure works as follows:
 This creates a closed loop that concentrates PageRank in the target page.
 
 #figure(
-  image("../assets/spam-farm.png", width: 70%),
+  {
+    import cetz.draw: *
+    set text(size: 8pt)
+    let circle_withcircle(accPos, name, text, N: 10, pad: 1, rad: (1, 4), body: {}) = {
+        // let accPos = center
+        let (rx, ry) = rad
+        // let N = 10
+        // let pad = 1
+        circle(accPos, radius: (rx, ry), name: name)
+        content((rel: (0, -0.25), to: name + ".south"), text)
+
+        let total-height = 2 * ry
+        let available-height = total-height - ((N + 1) * pad)
+        let r-small = available-height / N / 2
+
+        let y-start = ry - pad - r-small
+
+        for i in range(N) {
+          let step = 2 * r-small + pad
+          let y-pos = y-start - (i * step)
+          let curPos = (rel: (0, y-pos), to: accPos)
+          circle(
+            curPos, 
+            radius: r-small, 
+            // fill: blue.lighten(50%),
+            // stroke: blue 
+            name: "circle_" + name + "_" + str(i)
+          )
+          
+          // anchor("circle_" + name + "_" + str(i), curPos)
+        }
+
+        body
+    }
+    align(center, cetz.canvas(
+      {
+
+        stroke((thickness: 0.5pt))
+        circle((0, 0), radius: (1, 4), name: "inac")
+        content((rel: (0, -0.25), to: "inac.south"), [Inaccessible Pages])
+
+        circle_withcircle((rel: (3, 0), to: "inac.east"), "acc", [Accessible Pages], N: 7, pad: 0.5)
+
+        circle_withcircle((rel: (3, 0), to: "acc.east"), "own", [Own Pages], rad: (2, 4),  body: {circle((rel: (-1.25, 0), to: "own.center"), radius: 8pt, name:"target")})
+        for i in range(7) {
+          if calc.rem(i, 2) == 0 {
+            line("circle_acc_" + str(i), "target", mark: (end: ">"))
+          }
+        }
+
+        for i in range(10) {
+          line("circle_own_" + str(i), "target", mark: (start: ">", end: ">"))
+        }
+        content((rel: (-0.5, 3), to: "own.west"), [Target Page], name: "target_text")
+        line("target_text.south", "target", mark: (end: ">"), stroke: (dash: "dashed"))
+      }
+    ))
+  },
   caption: [Structure of a Spam Farm],
 )
+
 
 The PageRank of a *supporting page* $s$ is the sum of PR from pages that link to $s$ (_taxed_ and _divided_ by the number of outgoing links) and the incoming teleportation.
 Because the only page that links to $s$ is the target $t$, the score is:
