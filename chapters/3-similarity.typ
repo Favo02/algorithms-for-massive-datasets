@@ -664,7 +664,66 @@ We can amplify these properties:
 
   trying to use "OR" rather than "AND" to see how the probability changes... (need to finish this part)
 
+// what jack's brain has accomplished part 2: 03/02/2026, first part of the lecture
 
+In previous lessons, we defined a family of functions $cal{F}$ that is $(d_1, d_2, p_1, p_2)$-sensitive relative to a distance measure $d$. The goal of LSH is to design functions such that:
+- If $d(x, y) <= d_1$, then $P[h(x) = h(y)] >= p_1$ (High probability for similar items).
+- If $d(x, y) >= d_2$, then $P[h(x) = h(y)] <= p_2$ (Low probability for dissimilar items).
+
+Ideally, we want $p_1$ to be very large (close to 1) and $p_2$ to be very small (close to 0). For example, using *Jaccard Similarity*, if we set $d_1 = 0.1$ and $d_2 = 0.9$, our family is $(0.1, 0.9, 0.9, 0.1)$-sensitive. While this aligns with common sense, a probability of $0.9$ is often not robust enough for massive datasets where we might require $p_1 > 99.99%$.
+
+== Inception of Functions
+To decrease the gap between "good" and "professional" probabilities, we introduce *AND* and *OR* constructions. This is essentially a "filtering" mechanism: we want the function to return a match only under specific logical constraints.
+
+=== The AND-Construction
+We create a new function $f$ by combining $k$ independent functions from $cal{F}$. 
+$ f(x) = (h_1(x), h_2(x), dots, h_k(x)) $
+The condition $f(x) = f(y)$ holds if and only if $h_i(x) = h_i(y)$ for *all* $i = 1, dots, k$.
+The new sensitivity becomes:
+$ (d_1, d_2, p_1^k, p_2^k)$-sensitive
+*Personal Note:* This effectively lowers the probability of a false positive ($p_2$ drops quickly), but unfortunately, it also lowers $p_1$.
+
+=== The OR-Construction
+To fix the drop in $p_1$, we apply the *OR-construction*. If we take $f$ such functions, the probability of a match is:
+$ 1 - (1 - p^k)^f $
+This construction creates an S-curve, allowing us to sharpen the transition between "similar" and "dissimilar."
+
+=== Inception
+
+we can apply these constructions to the *extended* family itself. If we take an AND-family and apply an OR-construction to it, we get:
+$ f_(o r) (x) = f_(o r ) (y)$ i.f.f. $exists i : f_i (x) = f_i (y) $
+Substituting the underlying probability $p$, the new sensitivity becomes:
+$ (d_1, d_2, 1 - (1 - p_1^k)^f, 1 - (1 - p_2^k)^f) $-sensitive
+
+By stacking these levels (like "Inception"), we can reach extreme values like $(0.1, 0.9, 0.9998, 0.0003)$. 
+#note[
+This works perfectly if our starting family $cal{F}$ is infinite. If the family is finite (e.g., small bit-vectors), we are limited in how many "steps" of inception we can perform before running out of unique functions.
+]
+
+== Hamming Distance
+Hamming distance is defined over words of a fixed length $d$ from any alphabet.
+We define a family where each function $f_i$ simply selects the $i$-th coordinate:
+$ f_i (x) = x_i quad$ for $i in {1, dots, d} $
+
+If we pick an index $i$ uniformly at random, the probability that two words $x$ and $y$ match at that coordinate is:
+$ P[f_i (x) = f_i (y)] = 1 - $Hamming$(x, y){d} $
+This yields a $(d_1, d_2, 1 - d_1/d, 1 - d_2 /d)$-sensitive family. Again, the size of our family is limited by the dimensionality $d$ of the vectors.
+
+== Cosine Distance
+
+For vectors in continuous space, we use the angle between them. The LSH function is defined by picking a random hyper-plane (a random direction).
+
+- *Logic:* A random hyper-plane either separates two vectors or it doesn't.
+- *Case 1:* Vectors $x$ and $y$ lie on opposite sides of the plane $-> f(x) != f(y)$.
+- *Case 2:* Vectors $x$ and $y$ lie on the same side $-> f(x) = f(y)$.
+
+*Special Cases:*
+- If $x = y$, the angle $theta = 0$, so they always lie on the same side ($P=1$).
+- If $x$ and $y$ are opposite (anti-parallel), they will *always* be separated ($P=0$).
+
+In a continuous probability space, we can select any angle between $0$ and $pi$. The probability of being on the same side decreases linearly as the angle $theta$ increases:
+$ P = 1 - (theta)(pi) $
+Therefore, the cosine distance is $(d_1, d_2, 1 - d_1/pi, 1 - d_2/pi)$-sensitive.
 
 
 
