@@ -488,7 +488,7 @@ $
   This proves that this follows the property.
 ]
 
-=== $"AND"$-Construction
+=== $"AND"$-Construction and $"OR"$-Construction
 
 Given a $cal(F)$, we want to get an $cal(F)_"and"$ that is better in terms of $(d_1, d_2, p_1, p_2)$
 
@@ -543,6 +543,50 @@ The analogous thing can be done with the other parts of the property (with $d_2$
   We can increase the probability at the cost of increasing also the other treshold.
 ]
 
+#informally[
+  What happens if I apply the OR transformation to the AND family?
+
+  With this construction we obtain $(d_1, d_2, 1-(1-p_1^k)^k, 1-(1-p_2^k)^k)$-sensitive.
+
+  Because of the non-linearity of the functions we used, we raised $p_1$ and lowered $p_2$.
+  We can apply this idea indefinitely times, we are only limited by the number of functions in the original family $cal(F)$.
+
+  This construction is independent of the function.
+]
+
+=== Functions for distance
+
+Starting from a distance, what kind of functions can I use?
+
+==== Hamming Distance $h$
+
+Words of lenght $d$
+
+$ forall i = 1, ..., d, quad f_(i)(x) = x_i $
+$ PP(f_i(x) = f_i(y)) = 1 - h(x, y) / d $
+
+Hamming id $(d_1, d_2, 1 - d_1/d, 1- d_2/d)$-sensitive
+
+#note[
+  This is an example where the original family is limited, we have as much functions as components in the vector.
+]
+
+==== Cosine Distance
+
+Directions in space, so vectors but only the direction of the vector (not the magnitude)
+
+#informally[
+  The idea is that given a direction $f$, we need to check if the two vectors are in a same half-plane, meaning $f(x) = f(y)$.
+]
+
+In the special case when $x$ and $y$ point in the same direction: $d(x, y) = 0, PP = 1$.
+In the opposite case, when they are on the same direction but point to opposite sides: $PP = 0$.
+
+The probability linearly decreases while the angle grows from $0$ to $pi$, so the $PP$ is $PP = 1 - d/pi$.
+
+So the cosine couple with this family is $(d_1, d_2, 1- d_1/pi, 1- d_2/pi)$-sensitive.
+
+
 
 
 ---
@@ -589,23 +633,23 @@ A function $d(x, y)$ is a distance if it satisfies:
 
 === Typical Distances
 1. *Euclidean Distance ($L_2$):* The length of the segment joining two points in $RR^d$. It's part of the $L_p$ family:
-   $ d(x, y) = (sum_{i=1}^d |x_i - y_i|^p)^(1/p) $
-   *Note:* If $p=1$ we get the *Manhattan distance*. If we plot $d(x,y)=1$ for $p=2$ we get a circle; for Manhattan, we get a square.
+  $ d(x, y) = (sum_{i=1}^d |x_i - y_i|^p)^(1/p) $
+  *Note:* If $p=1$ we get the *Manhattan distance*. If we plot $d(x,y)=1$ for $p=2$ we get a circle; for Manhattan, we get a square.
 
 
 
 2. *Jaccard Distance:* Defined as $1 - "Jaccard Similarity"$.
-   *Triangle inequality proof:* Recall $J(A, B) = P(h(A) = h(B))$, so $d(A, B) = P(h(A) != h(B))$. If $h(A) != h(B)$, then for any third set $C$, $h(C)$ must be different from either $h(A)$ or $h(B)$. In terms of probability:
-   $ P(h(A) != h(B)) <= P(h(A) != h(C) " or " h(B) != h(C)) <= d(A, C) + d(B, C) $
+  *Triangle inequality proof:* Recall $J(A, B) = P(h(A) = h(B))$, so $d(A, B) = P(h(A) != h(B))$. If $h(A) != h(B)$, then for any third set $C$, $h(C)$ must be different from either $h(A)$ or $h(B)$. In terms of probability:
+  $ P(h(A) != h(B)) <= P(h(A) != h(C) " or " h(B) != h(C)) <= d(A, C) + d(B, C) $
 
 3. *Cosine Distance:* Objects are vectors starting from a common origin (directions).
-   $ d(x, y) = theta = arccos((x dot y) / (||x|| dot ||y||)) $
-   It's basically the angle between vectors.
+  $ d(x, y) = theta = arccos((x dot y) / (||x|| dot ||y||)) $
+  It's basically the angle between vectors.
 
 4. *Edit Distance (Levenshtein):* Minimum number of atomic operations (add, delete, modify char) to transform string $s$ into $t$.
 
 5. *Hamming Distance:* Number of positions in which bits (or chars) differ.
-   Example: `11010` and `10110` have distance 2.
+  Example: `11010` and `10110` have distance 2.
 
 == Formalizing LSH Families
 Can we extend LSH to these distances? We need to speak about probabilities of events because the algorithm is random.
@@ -618,7 +662,7 @@ We can amplify these properties:
 - *AND Construction:* $f'(x) = f'(y)$ iff all $r$ functions match. It makes the probability $p^r$.
 - *OR Construction:* Use bands to make it $1 - (1 - p)^b$.
 
- trying to use "OR" rather than "AND" to see how the probability changes... (need to finish this part)
+  trying to use "OR" rather than "AND" to see how the probability changes... (need to finish this part)
 
 
 
