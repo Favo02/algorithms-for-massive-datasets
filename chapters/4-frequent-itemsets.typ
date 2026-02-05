@@ -2,36 +2,37 @@
 
 = Frequent Itemsets
 
-Or Market-Basket Analysis (which items are we going to put in the basket to buy?).
-We study the behaviour of customers, we look for patterns.
-We are not really interested in explanations, but only on exploitation.
+The study of frequent itemsets originated from techniques designed to analyze customer behavior. The fundamental objective is to *exploit statistical patterns* in purchasing data to understand how items relate to one another.
+
+Patterns often emerge in "baskets" (the set of items a customer buys in a single transaction):
+- *Predictable associations:* Customers buying hamburgers are statistically likely to buy ketchup.
+- *Unintuitive associations:* Data analysis famously revealed "Beer and Diapers" or "Torch-lights and Lollipops" as statistically significant pairs. 
 
 #example[
-  We find the pattern that people often buy hamburger and ketchup togheter.
-  It is, of course, because people eat them together, but we are not interested in that, we only care how to find these (e.g. to raise the price of both or place closer in the shelf).
-
-  We are interested in not the obvious ones, like Beer + Diapers or Torch-Light + Lollipops.
-]
-
 This could also be used for items suggested by Amazon or Netflix in the homepage
 Spoiler it is not used, not beacuse it does not work, but because there are even more effective strategies.
 One of these is User Collaborative Filtering, using similar items (last chapters).
 Items are users, and after finding similar users simply suggest the same things bought by similar users.
 
 Not only for commercial purpouse, but also medical.
+]
 
-Formalization.
+== Formalization
 
-/ Association Rule:
-  if in a basket I see all the items contained in $A$, we assume also the item $b$ is in the basket
+To transform these observations into actionable knowledge, we define an *Association Rule*:
   $ underbrace(A, "set of items") -> underbrace(b, "item") $
+Where:
+- $A$ is a *set of items* (the antecedent).
+- $b$ is a *single item* (the consequent).
 
-/ Degenerate Rule:
-  rule of no use.
-  We need some metric that measure the effectiveness of an association rule.
+#informally[
+  The implication of this rule is that if all of the items in $A$ appear in some basket, then $b$ is “likely” to appear in that basket as well.
+]
 
-/ Support: given a file of all baskets, we count the number of times a set $I$ is a subset of a basket $B$
-  $ "Supp"(I) = "abs. freq." I subset.eq B forall B in "baskets" $
+To also formalize the notion of "likely", we define the *confidence* of an association rule $A -> b$:
+
+
+
 
 / Confidence: adding $b$ to the set $A$, comparing to the number
   $ "Confidence"(A -> b) = "Supp"(A union {b}) / "Supp"(A) $
@@ -168,6 +169,14 @@ Where the counter is $0$ we discard the triple.
 With this representation, we have to find the triple in memory (if it exists) and modify it.
 We don't have immediate access anymore.
 We could use hash functions to build an index on these indices to get immediate access to the location of the triples.
+
+
+
+
+
+// favo's notes
+
+
 For this end, we build an HashMap that hashes the two indices $i, j$ into a bucket.
 Collisions are handled using a linked list on each bucket.
 This gives us a quasi-constant access time and can handle sparsity.
@@ -514,3 +523,260 @@ This saves roughly half the space.
 Are we missing anything?
 - *False Negatives?* No. The monotonicity property guarantees that we never filter out a pair that *could* have been frequent. If a pair was destined to be frequent, both its constituent items *must* have survived Pass 1.
 - *False Positives?* No, because we are actually counting the occurrences in Pass 2.
+
+
+// jack's notes of secod part 05/02/2026
+
+05/02/2026 massive datasets
+
+In the previous lecture, we analyzed the *Triangular Matrix* approach for storing pair counters. The key advantage of the triangular matrix is that it guarantees *constant access time*, $O(1)$, for any pair $(i, j)$ via a direct index calculation function.
+
+However, when we need to count *triples* (sets of 3 items) or when the data is extremely sparse, a dense matrix becomes inefficient. We need a structure that maintains quasi-constant access time but handles sparsity better.
+
+=== 1.1 Hash Table Approach for Triples
+To store triples $(i, j, k)$, we can introduce a hash function $h$.
+The general mapping flow is:
+$ (i, j, k) -> h(i, j, k) -> "Bucket" {b_0, b_1, dots} $
+
+Since hash functions inevitably produce collisions, each bucket must point to a *linked list* containing the actual triples and their counts.
+- *Structure:* A hash map where buckets store pointers to linked lists.
+- *Collision Handling:* We aggregate triples falling into the same bucket in a linked list.
+- *Operation:* To increment a count, we compute the hash. If the node exists in the list, we increment it. If not, we append a new node.
+
+*Access Time Analysis:*
+Strictly speaking, this is not constant time because we must traverse the linked list. However, if the number of buckets is sufficiently large relative to the number of frequent triples, the linked lists remain short.
+- The variance of access times is small.
+- We operate in a regime of *quasi-constant access time*.
+
+=== 1.2 Trade-off: Triangular Matrix vs. Hash Table
+We now have two distinct methods for organizing counters in memory:
+1.  *Triangular Matrix:* Good for dense data.
+2.  *Hash Table:* Good for sparse data (exploits sparsity).
+
+*Which one should we prefer?*
+It depends entirely on the *sparseness* of the candidate pairs.
+- *Matrix:* Allocates 1 integer per possible pair.
+- *Hash Table:* Allocates at least 3 integers per pair (indices $i, j$ + pointer + hash overhead).
+
+*Decision Criterion:*
+To choose, we need an estimation of the number of counters required.
+*Example:*
+- $N = 100,000$ ($10^5$) items.
+- $M = 10,000,000$ ($10^7$) baskets.
+- Average basket size = 10 items.
+
+*Option A: Triangular Matrix*
+We must reserve space for every possible pair:
+$ binom(N, 2) approx 5 times 10^9 text(" counters (integers)") $
+
+*Option B: Hash Table (Worst Case)*
+Upper bound for distinct pairs: Assume every pair in every basket is unique.
+- Pairs per basket: $binom{10}{2} = 45$.
+- Total pairs: $10^7 times 45 = 4.5 times 10^8$.
+- Space per pair (approx 3 ints): $4.5 times 10^8 times 3 = 1.35 times 10^9$ integers.
+
+*Conclusion:* In this scenario, the hash table requires less than $1/3$ of the space of the matrix. The hash approach is superior here due to sparsity.
+
+---
+
+== 2. Extending A-Priori (Triples and Beyond)
+So far, we have focused on pairs. In principle, we need to find frequent triples, quadruples, etc., to derive complex Association Rules.
+
+*The Monotonicity Property* holds for any cardinality: if a set $S$ is frequent, all subsets of $S$ must be frequent.
+
+=== 2.1 The General A-Priori Workflow
+The algorithm is an iterative sequence of two operations:
+1.  *Filtering:* Pruning the candidates based on support.
+2.  *Construction:* Generating new candidates of size $k+1$ from frequent sets of size $k$.
+
+*Pass 3 (Finding Triples):*
+To count triples, we need a third pass over the data. This is computationally expensive as reading from disk is the bottleneck.
+For every basket $B$, and for each triple $\{i, j, k\} subset.eq B$, we increment $c(i, j, k)$ *if and only if*:
+1.  $\{i\}, \{j\}, \{k\}$ are frequent (from Pass 1).
+2.  $\{i, j\}, \{i, k\}, \{j, k\}$ are frequent (from Pass 2).
+
+We proceed iteratively ($L_1 \to C_2 \to L_2 \to C_3 \to dots$). The complexity scales linearly with the maximum cardinality of frequent sets we wish to find.
+
+=== 2.2 Correctness and Failure
+A-Priori is an *exact algorithm*: if it terminates, it produces the correct result. However, it may fail (e.g., Segmentation Fault) before finishing.
+*Why?*
+- *Integer Overflow:* Unlikely (4 bytes is usually enough for counts).
+- *Memory Exhaustion:* This is the real danger.
+    - Unlike the matrix, hash tables allocate memory dynamically.
+    - We might exhaust RAM while appending new nodes to collision lists.
+    - We have no guarantee that the free memory is sufficient for all candidates.
+
+If A-Priori fails due to memory, we need a more memory-efficient approach.
+
+---
+
+== 3. The PCY Algorithm (Park-Chen-Yu)
+PCY extends A-Priori by optimizing the *First Pass*.
+*Observation:* During Pass 1, we only count singletons (items). This uses very little RAM. Most of the memory is idle.
+
+=== 3.1 PCY Pass 1
+We utilize the idle memory to maintain a *Hash Table* of pair counts alongside the item counts.
+- We treat the free memory as a large array of integers (buckets).
+- For every basket, for every pair $(i, j)$ in the basket:
+  $ "bucket" = h(i, j) \pmod{\text{array\_size}} $
+  $ \text{Array}[\text{bucket}] \mathrel{+}= 1 $
+
+=== 3.2 Between Pass 1 and Pass 2
+At the end of Pass 1, we analyze the hash buckets against the support threshold $s$.
+- If $\text{Array}[b] < s$: No pair hashing to bucket $b$ can be frequent.
+- If $\text{Array}[b] \ge s$: Pairs hashing to $b$ *might* be frequent (collisions possible).
+
+*Compression:*
+We do not need the actual counts for Pass 2, only the boolean status (Frequent/Not Frequent). We compress the integer array into a *Bitmap*:
+- If count $\ge s \to$ bit = 1.
+- If count $< s \to$ bit = 0.
+
+*Space Gain:* An integer (32 bits) is replaced by 1 bit. We reclaim $31/32$ of the memory to use for the actual counters in Pass 2.
+
+=== 3.3 PCY Pass 2
+We now count pairs $(i, j)$ only if:
+1.  $i$ and $j$ are frequent items.
+2.  The bit corresponding to $h(i, j)$ is 1.
+
+This "advanced filtering" allows us to discard many candidate pairs that A-Priori would have counted, allowing us to handle larger datasets or lower support thresholds without running out of RAM.
+
+
+---
+
+== 4. Advanced Extensions: Multistage and Multihash
+Even with PCY, the bitmap might not filter enough pairs if there are too many collisions (i.e., too many "false positive" buckets).
+
+=== 4.1 Multistage Algorithm
+*Idea:* Iterate the hashing process to filter more aggressively.
+1.  *Pass 1:* Standard PCY (creates Bitmap 1).
+2.  *Pass 2:* Do not count pairs yet. Instead, use a *second hash function* $h_2$ and a new hash table. Only hash pairs that pass the Bitmap 1 check.
+3.  *End of Pass 2:* Create Bitmap 2.
+4.  *Pass 3:* Count pairs that pass *both* Bitmap 1 and Bitmap 2.
+
+*Trade-off:* We reduce the number of counters needed (preventing memory overflow), but we pay the price of an *extra disk scan* (Pass 2 is now just for hashing).
+
+=== 4.2 Multihash Algorithm
+*Idea:* Perform two hash filters *in parallel* to avoid the extra disk scan.
+1.  *Pass 1:* Split the available memory into two halves.
+2.  Run two hash functions ($h_1, h_2$) simultaneously into two separate hash tables.
+3.  *End of Pass 1:* Convert both tables into two bitmaps.
+4.  *Pass 2:* A pair is a candidate only if *both* $h_1(i, j)$ and $h_2(i, j)$ buckets are frequent.
+
+*Trade-off:*
+- Since we split memory, each hash table is half the size of the PCY table.
+- This increases collisions within each individual table.
+- However, the *intersection* of valid buckets might still be smaller than a single PCY filter.
+- *Benefit:* No extra disk scan required compared to Multistage.
+
+= Algorithms for Massive Datasets (Part 2)
+*Date:* February 5, 2026
+*Topic:* Sampling-Based Algorithms, SON, and Toivonen's Algorithm
+
+---
+
+== 5. Sampling-Based Approaches
+Up to this point, we assumed we had to process the entire dataset (stored on a hard disk). However, strict exactness might be traded for efficiency by working with a *sample* of the baskets in RAM.
+
+=== 5.1 The Concept of Sampling
+Instead of scanning the entire disk, we load a random sample of the baskets into RAM.
+- Let $p$ be the fraction of the total baskets we sample ($0 < p < 1$).
+- We run an in-memory algorithm (like A-Priori) on this sample.
+- Since the dataset size is reduced by factor $p$, the support threshold must be scaled accordingly: $s_{sample} = p dot s$.
+
+*The Risk of Errors:*
+Since we are using a statistical estimator, the output is not guaranteed to be exact. We face two types of errors:
+1.  *False Positives (FP):* Itemsets that appear frequent in the sample but are not frequent in the whole dataset.
+2.  *False Negatives (FN):* Itemsets that are frequent in the whole dataset but were missed in the sample.
+
+*Managing Errors:*
+- *False Positives* are "less bad" than False Negatives. Why? Because we can treat the sample output as a set of *Candidate Sets*. With one full scan of the dataset, we can verify their actual support and remove the FPs.
+- *False Negatives* are fatal. If the algorithm doesn't propose a set, we cannot verify it later. It is simply lost.
+
+*Sampling Strategy:*
+To minimize variance, the sample must be truly random. Simply taking the "first $N$ rows" of a file is dangerous because files often have temporal or logical ordering (e.g., Christmas sales grouped together), which would bias the sample.
+
+== 6. The SON Algorithm
+
+The SON algorithm provides a way to use sampling *without* producing False Negatives. It is an exact algorithm that lends itself perfectly to parallelization (MapReduce).
+
+=== 6.1 The Algorithm Structure
+1.  *Partitioning:* Divide the massive basket file into $k$ chunks of equal size.
+    - Each chunk represents a "sample" of proportion $p = 1/k$.
+2.  *Local Processing:* Load each chunk into RAM and run A-Priori (or any frequent itemset algorithm) with a scaled threshold $p dot s$.
+3.  *Union of Candidates:* An itemset is a *global candidate* if it is frequent in *at least one* chunk.
+4.  *Verification:* Scan the entire dataset to count the support of these global candidates and filter out False Positives.
+
+=== 6.2 Proof of Correctness (No False Negatives)
+We must prove that if a set is frequent globally, it *must* be selected as a candidate by SON.
+
+*Theorem:* If an itemset $I$ is frequent in the whole dataset (Support $S(I) \ge s$), then there exists at least one chunk $C_i$ where the support of $I$ in that chunk is at least $p dot s$.
+
+*Proof (by Contradiction):*
+Let's assume the opposite: $I$ is globally frequent ($S(I) \ge s$), but it is *not* frequent in any chunk.
+- If $I$ is not frequent in chunk $C_i$, then $Supp_{C_i}(I) < p dot s$.
+- The total support is the sum of supports in all chunks:
+  $ S(I) = sum_{i=1}^{k} Supp_{C_i}(I) $
+- Substituting our assumption:
+  $ S(I) < sum_{i=1}^{k} (p dot s) $
+  $ S(I) < k dot (p dot s) $
+- Since $p = 1/k$, then $k dot p = 1$.
+  $ S(I) < s $
+- *Contradiction:* We started with the premise that $S(I) \ge s$. Therefore, the assumption must be false. $I$ must be frequent in at least one chunk. Q.E.D.
+
+=== 6.3 Distributed Implementation (MapReduce)
+SON is ideal for distributed computing (MapReduce) because chunks can be processed in parallel. It requires *two* MapReduce jobs chained together.
+
+*Job 1: Candidate Generation*
+- *Map:* Read a chunk of the basket file. Run A-Priori locally with threshold $s/k$. Output key-value pairs `(1, itemset)` for every frequent itemset found.
+- *Shuffle:* Group by key `1`.
+- *Reduce:* Receive all local frequent itemsets. Output the set union (remove duplicates). These are the *Global Candidates*.
+
+*Job 2: Verification*
+- *Map:* Read a chunk of the basket file and the list of *Global Candidates* (broadcasted to all mappers). For each basket, count occurrences of the candidates. Output `(candidate, count)`.
+- *Shuffle:* Group by `candidate`.
+- *Reduce:* Sum the counts for each candidate. If `total_count >= s`, output the itemset.
+
+== 7. Toivonen's Algorithm
+Toivonen's algorithm is a *randomized algorithm*. Unlike SON, it does not guarantee finding the answer in a single run (it may fail), but if it produces an output, it is correct. It typically uses much less memory than SON/A-Priori.
+
+=== 7.1 The Setup
+1.  Load a random sample of the baskets (fraction $p$) into RAM.
+2.  Run A-Priori on the sample with a *lowered* threshold.
+    - Standard scaled threshold: $p dot s$.
+    - Toivonen's threshold: $p dot s dot alpha$, where $0 < alpha < 1$ (e.g., 0.8 or 0.9).
+3.  *Why lower the threshold?* We act "permissively" to include more candidates, reducing the chance of False Negatives caused by sampling variance.
+
+=== 7.2 The Negative Border
+Toivonen introduces a critical concept to detect failure: the *Negative Border*.
+#definition[
+An itemset $I$ is in the Negative Border if:
+  1.  $I$ is *not* frequent in the sample.
+  2.  *All* immediate subsets of $I$ (sets created by removing 1 item) *are* frequent in the sample.
+]
+*Process:*
+1.  Find frequent sets in the sample (Candidates).
+2.  Construct the Negative Border.
+3.  Scan the full dataset to count the support of:
+    - The Candidates.
+    - The Negative Border sets.
+
+=== 7.3 Verification and Failure
+After the full scan:
+1.  *Filter Candidates:* Keep those with $S(I) \ge s$. (Removes False Positives).
+2.  *Check Negative Border:*
+    - If *no* member of the Negative Border is frequent in the full dataset, the algorithm *succeeded*.
+    - If *any* member of the Negative Border turns out to be frequent ($S(I) \ge s$), the algorithm *failed*.
+
+*Why failure?* If a set in the Negative Border is actually frequent, it means our sample threshold was not low enough—we "missed" a set that should have been a candidate. Since Monotonicity implies we might have missed its supersets too, we must discard the results, resample, and restart.
+
+*Note:* Toivonen never produces False Negatives if it terminates successfully. We just repeat until success (usually 1 or 2 tries).
+
+
+
+
+
+
+
+
+
+
