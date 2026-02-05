@@ -170,7 +170,7 @@ We don't have immediate access anymore.
 We could use hash functions to build an index on these indices to get immediate access to the location of the triples.
 
 
---- jack
+// TODO: merge into Favo02 lecture notes.
 
 == Market-Basket Analysis
 
@@ -197,7 +197,7 @@ The raw data consists of a "Basket File" containing all checkout records. Let $c
 
 ==== 1. Support
 The *Support* of an itemset $I$ is the absolute frequency (count) of baskets that contain $I$.
-$ S u p p (I) = |{B in cal(B) : I subseteq B}| $
+$ S u p p (I) = |{B in cal(B) : I subset.eq B}| $
 
 #note[
 If we have 1,000,000 baskets, we count exactly how many times the pair "{torch, lollipop}" appears. This helps us ignore rare, coincidental occurrences.
@@ -205,9 +205,9 @@ If we have 1,000,000 baskets, we count exactly how many times the pair "{torch, 
 
 ==== 2. Confidence
 The *Confidence* of a rule $A -> b$ measures how often the item $b$ appears in baskets that already contain the set $A$. It is defined as the ratio:
-$ C o n f (A -> b) = (S u p p (A cup(b)))/(S u p p (A)) $
+$ C o n f (A -> b) = (S u p p (A and(b)))/(S u p p (A)) $
 
-#nota[
+#note[
 A confidence of $0.2$ means that $20%$ of the time a customer buys a torch, they also buy a lollipop. This conditional probability allows us to gauge the predictive power of the rule.
 ]
 
@@ -240,10 +240,10 @@ $ binom(n, 2) = (n(n-1))/(2) approx (n^2)/(2) $
 
 While quadratic complexity is significantly better than exponential, it is still taxing for Big Data.
 
-#esempio[
+#example[
 Suppose we have 2 GB of RAM ($2^31$ bytes) and use 4-byte integer counters.
 To store counters for all pairs:
-$ 4 \times (n^2)/(2) = 2n^2 $
+$ 4 times (n^2)/(2) = 2n^2 $
 Setting $2n^2 <= 2^31$ gives $n <= sqrt(2^30) approx 32,768$.
 ]
 
@@ -255,11 +255,10 @@ Unlike the LSH approach where we accepted approximate solutions via hashing, her
 
 This leads us to a family of algorithms designed to prune the search space, starting with the fundamental *A-Priori Algorithm*.
 
-#definizione[
 The A-Priori algorithm is a constructive solution to the frequent itemset problem. It is organized into two distinct main steps.
-]
 
-#attenzione[
+
+#warning[
 Each step requires a full pass over the basket file. Since the file sits in mass memory (hard disk), the execution time is dominated by Input/Output (I/O) operations.
 ]
 
@@ -281,7 +280,7 @@ How does this scale? Linearly with the number of *distinct* items.
 Even in a worst-case scenario with 1 million distinct items, we are talking about *Megabytes* (maybe 100MB), not Gigabytes. We are using a tiny fraction of RAM, leaving plenty of free space for the heavy lifting in Pass 2.
 
 Before Pass 2, we need a theoretical justification for ignoring certain pairs. We exploit *Monotonicity*:
-If we have a set $A$ and a superset $B$ (so $A subseteq B$), the support must satisfy:
+If we have a set $A$ and a superset $B$ (so $A subset.eq B$), the support must satisfy:
 $ S u p p (A) >= S u p p (B) $
 
 If $B$ is a frequent itemset, then by definition $S u p p (B) >= s$. By transitivity, $ S u p p (A) >= s$, so $A$ must also be frequent.
