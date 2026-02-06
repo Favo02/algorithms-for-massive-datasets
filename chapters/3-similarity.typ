@@ -2,194 +2,225 @@
 
 = Similarity
 
-#informally[
-  Detecting similary between objects.
+With an _equality relation_ between objects in a universe, equality is dichotomous (true or false).
+Similarity, instead, is a *spectrum* (e.g., plagiarism detection).
 
-  With an equality relation between the universe of where the objects live, the equality is a dicotomic relation (true or false).
-
-  Similarity on the other hand is a spectrum (e.g. plagiarism).
-
-  #example[
-    How does amazon suggest other things to buy?
-    It detects other users that are _similar_ to you, suggesting things that similar users bought.
-  ]
+#example[
+  How does Amazon suggest products?
+  It detects users _similar_ to you and recommends products that similar users bought.
 ]
 
-It can be defines as:
+Similarity can be defined as a function:
 $ s(x, y) -> RR $
 
-For each object, compute the similarity compared to another object (a simple for loop).
-But when the dataset is massive, even simple problems become complex.
+For small datasets, we can compute similarity for all object pairs with a _simple loop_.
+However, with massive datasets, even simple problems become _computationally expensive_.
 
-We will focus on very specific type of objects: text documents.
-There are many similarity measures for text documents, we decide to use the Jaccard similarity, defined as:
+== Jaccard Similarity
+
+We focus on *text documents* and use Jaccard similarity as our measure:
 $ J(S, T) = (|S inter T|) / (|S union T|) $
 
-#note[
-  We dont represent text as sets, but as strings.
-  We need to define intersection and union over strings.
-  We will do that in a moment.
+#warning[
+  This measures _syntactic_ similarity only, not _semantic_ meaning.
+  Sets ignore element *order* and *quantity*.
 ]
 
-The Jaccard similarity is bounded:
-- if $S inter T = emptyset quad -> J(S, T) = 0$
-- if $S = T quad -> J(S, T) = 1$
+The Jaccard similarity is bounded between $0$ and $1$:
+- $J(S, T) = 0 quad "if" S inter T = emptyset$
+- $J(S, T) = 1 quad "if" S = T$
+
+=== $k$-grams and Shingles
+
+This similarity is defined using sets, but text documents are not represented using sets, but using _strings_.
+To convert a long string into a set of elements we _tokenize_ the document, producing a set of *shingles*.
+Before this stage, the text is often *preprocessed*, removing multiple whitespaces or removing stop words and conjunctions.
+
+#note[
+  A token can be anything, a single _character_, a _word_ or even a _phrase_.
+
+  From now on, we will consider as shingle a character.
+]
+
+Then we construct $k$-grams (or $k$-shingles or only shingle): a sequences of $k$ consecutive *tokens* (characters, words, or other units).
+The set of these shingles is the set on which the similarity is applied.
+
+#example[
+  The text "Today and tomorrow will rain", with the shingles as characters and $k = 5$ generates the set: ${$"today", "oday\_", "day\_a", "ay\_an", ...$}$.
+]
 
 #warning[
-  With this tecnique, we are considering only a "sintactic" similarity, we are not considering "semantics" of the text.
-
-  We are working with sets, they do not depend on the order of elements.
+  _Again,_ sets do not account for order or duplicates.
 ]
 
-To calculate these, we need to convert text into a set.
-We divide the text into *shingles*: a not particularly defined _part_ or _fragment_ of a text.
-For example, we can divide the text into words.
+The parameter $k$ depends on the document type and size:
+- *$k$ too small* ($k = 1$): almost all documents will generate the same set (the full alphabet).
+  _Everything becomes similar._
+- *$k$ too large* ($k = "document length"$): each document has one unique shingle.
+  _Nothing is similar except identical documents._
+
+A rule of thumb is that $k$ should be picked _large enough_ that the probability of any given shingle appearing in any given document is _low_.
+
+#example[
+  Working with emails, with the assumption that only $27$ characters can appear (the alphabet and the whitespace) and with $k = 5$, we can calculate the total possible $5$-grams: $ 27^5 approx 14 times 10^6 $
+
+  A typical email is surely much smaller that $27^5$, so we would expect $k = 5$ to work well (and it does).
+  But the calculation is a bit more complex, as more than $27$ characters can appear but not all with the _same probability_.
+  We can approximate a probability closer to the reality by considering only $20$ possible characters.
+]
+
+In general $k = 5$ for email and $k = 9$ for larger documents are considered safe.
+
+=== Storing Shingles
+
+Storing each $k$-gram explicitly as a string requires $k$ bytes per shingle.
+Instead, we could *hash* the shingle an store only the integer representing the bucket.
+$ h("shingle") -> 32 "bits" $
 
 #note[
-  Most of the time, it is better not to work with the text as it was provided.
-  For example, removing or ignoring conjunctions and stop words.
-  In this case, a shingle is a non-stop word with the two words that succed it.
+  While this introduces some collisions, meaning two different shingles will be considered the same one, it works really well beacuse _most_ of the possible shingles _never occour_.
+]
 
-  #example[
-    "Today and tomorrow will..."
-    "Buy X-cola"
-    The only shingle is "and tomorrow will".
+#example[
+  Using $9$-shingles requires $72$ bits of storage, but hashing reduces this to just $32$ bits.
+  This matches the space needed for _unhashed_ $4$-shingles, yet hashing $9$-shingles provides *better differentiation* quality: while $4$-shingles account also for very *rare* shingles, hashed $9$-shingles *uniformly distribute* rare shingles across buckets, improving effectiveness.
+]
+
+=== Storing Documents: Charateristic Matrix
+
+We can store documents using a binary matrix called the _characteristic matrix_:
+- each row represents a *shingle* (identified by its hash bucket, a natural integer)
+- each column represents a *document*
+- an entry is $1$ if the document contains the shingle, $0$ otherwise
+
+#example[
+  Consider the documents:
+  - $D_1 = "ab"$
+  - $D_2 = "abc"$
+  - $D_3 = "bc"$
+  - $D_4 = "bcac"$
+
+  Using $k = 2$ character shingles:
+  - $D_1$: $\{"ab"\}$
+  - $D_2$: $\{"ab", "bc"\}$
+  - $D_3$: $\{"bc"\}$
+  - $D_4$: $\{"bc", "ca", "ac"\}$
+
+  Hashing shingles with the hash function:
+  - $h("ab") = 0$
+  - $h("bc") = 1$
+  - $h("ca") = 2$
+  - $h("ac") = 3$
+
+  Characteristic matrix:
+  #align(center)[
+    #table(
+      columns: 5,
+      stroke: (x, y) => if x == 0 or y == 0 { none } else { .05em },
+      [], [$D_1$], [$D_2$], [$D_3$], [$D_4$],
+      [$0$], [1], [1], [0], [0],
+      [$1$], [0], [1], [1], [1],
+      [$2$], [0], [0], [0], [1],
+      [$3$], [0], [0], [0], [1],
+    )
   ]
 ]
 
-We will use k-grams, $k$ following elements.
-An element could be either a character, a word or even a whole sentence.
+To calculate the Jaccard similarity between two documents, we need to calculate:
+- the *intersection*: number of rows that have $1$ for both documents
+- the *union*: number of rows that have only one $1$
 
-#example[
-  "Today and tomorrow will..."
-  "Buy X-cola"
-  with $k = 5$ characters, we will get:
-  "today", "oday ", "day a", "ay an", ...
-]
+This idea works, but the charateristic matrix is *too big* to fit in memory.
+We need to _compress_ this matrix, being able to compute the similarity without decompressing it.
 
-#warning[
-  These are sets, not multisets!
-]
+=== Storing Documents: Min Hash Function
 
-How do we choose $k$?
-It depends on the type of text.
-Lets see what happens with big or small values for $k$:
-- $k = 1$ unigrams: independently of the document, it is very likely we are ending up with the same set: the full alphabet.\
-  *Anything is similar*
-- $k = k_max$ the lenght of the document: we will extract only one shingle. The only documents that will have similarity differnt than $0$ is if the document is compared with itself.\
-  *Nothing is similar*
-
-A good idea is to calculate the probability of a shingle to be contained in a document.
-
-#example[
-  We are working with email messages.
-  For simplicity, the only allowed characters are 27 (the alphabet + a white space).
-
-  With $k = 5$, there exists $27^5 approx 14 dot 10^6$.
-  This number also accounts for very unlikey 5-grams.
-
-  The length of the email is an upper bound to the number of different k-grams (independently of $k$).
-
-  If that number is much smaller than $27^5$, then most of the possible k-grams cannot appear.
-]
-
-The naive way is to store each k-gram explicitly, needing $k$ bytes.
-
-But that wastes a lot of space, we could use hash functions.
-$ h(x) -> 32 $
-
-=== Charateristic Matrix
-
-We need to store the information we have:
-- one dimension (x) is for the documents
-- one dimension (y) is for the shingle. The shingle is hashed, so it is represent by an integer
-- each entry is $1$ or $0$, if the shingle is included in the document or not
-
-#example[$
-  mat(
-    , D_1, D_2, D_3;
-    0, 0, 1, 1;
-    1, 1, 0, 1;
-    2, 1, 1, 1;
-    3, 0, 0, 1
-  )
-$]
-
-To calculate the similarity between two documents, we can simply count the rows with both $1$ (intersection) or at least one $1$ (union).
-But we cannot do that because we cannot fit the whole matrix into memory.
-
-#note[
-  We need to compress this matrix, but we need to be able to compute the similarity without decompressing it.
-]
-
-=== Min Hash Function
-
-An hash function that hash document into shingles
+We introduce a function that hashes a *document* into a *shingle*.
 $ h : {"docs"} -> {"shingles"} $
 
-#warning[
-  This function is not deterministic.
-  But not that the same function will return different result: a fixed function IS deterministic.
-
-  But we will pick randomly a function.
-]
-
-+ Fix a row permutation of the CM
-+ Apply the permutation to the CM
-+ For each document, select the first one in the permuted column
+To calculate a Min Hash Function three steps are done:
++ Fix a _row permutation_ (of the shingles) of the charateristic matrix
++ _Apply_ the permutation to the charateristic matrix
++ For each document, the resulting shingle is the row with the first $1$ in the permuted column
 
 #example[
-  An hash function $h_1$ for the previous matrix example:
-  + we fix $[2, 0, 3, 1]$:
+  An hash function $h_1$ with the documents from the last example:
+  + fix a permutation of the rows: $[2, 0, 3, 1]$
   + permute the matrix:
-    $
-      mat(
-        , D_1, D_2, D_3;
-        2, 1, 1, 1;
-        0, 0, 1, 1;
-        3, 0, 0, 1;
-        1, 1, 0, 1;
+    #align(center)[
+      #table(
+        columns: 5,
+        stroke: (x, y) => if x == 0 or y == 0 { none } else { .05em },
+        [], [$D_1$], [$D_2$], [$D_3$], [$D_4$],
+        [$2$], [0], [0], [0], [1],
+        [$0$], [1], [1], [0], [0],
+        [$3$], [0], [0], [0], [1],
+        [$1$], [0], [1], [1], [1],
       )
-    $
+    ]
   + for each column, start traversing the column.
     The first one encountered in the column, is the result of the hash function (the shingle selected):
-    $ h_1(D_1) = 2, quad h_1(D_2) = 2, quad h_1(D_3) = 2 $
+    $
+      h_1(D_1) = 0 \
+      h_1(D_2) = 0 \
+      h_1(D_3) = 1 \
+      h_1(D_4) = 2 \
+    $
 
-
-  Another hash function $h_2$:
-  + we fix $[0, 2, 3, 1]$:
+  By generating another permutation, we can obtain a different hash function $h_2$:
+  + fix the permutation: $[3,1,2,0]$
   + permute the matrix:
-    $
-      mat(
-        , D_1, D_2, D_3;
-        0, 0, 1, 1;
-        2, 1, 1, 1;
-        3, 0, 0, 1;
-        1, 1, 0, 1;
+    #align(center)[
+      #table(
+        columns: 5,
+        stroke: (x, y) => if x == 0 or y == 0 { none } else { .05em },
+        [], [$D_1$], [$D_2$], [$D_3$], [$D_4$],
+        [$3$], [0], [0], [0], [1],
+        [$1$], [0], [1], [1], [1],
+        [$2$], [0], [0], [0], [1],
+        [$0$], [1], [1], [0], [0],
       )
+    ]
+  + calculate the values of the hash function
     $
-  + for each column, start traversing the column.
-    The first one encountered in the column, is the result of the hash function (the shingle selected):
-    $ h_2(D_1) = 2, quad h_2(D_2) = 0, quad h_2(D_3) = 0 $
+      h_2(D_1) = 0 \
+      h_2(D_2) = 1 \
+      h_2(D_3) = 1 \
+      h_2(D_4) = 3 \
+    $
 ]
-
-We could have exactly one hash function for each permutation of shingles, so we have $n!$ possible hash functions.
 
 #warning[
   All the values below the first one of each column are lost.
 ]
 
-=== Signature Matrix
+With that technique we are *losing* a lot of information on the documents.
+The idea is to store *several* different hash functions instead of the whole matrix.
 
-Storing _some_ hash functions is smaller than storing the whole matrix.
-This is called a signature matrix.
-$
-  mat(
-    , D_1, D_2, D_3;
-    h_1, 2, 2, 2;
-    h_2, 2, 0, 0;
-  )
-$
+We could have one hash function for each permutation of the shingles (rows), so there exists $n!$ possible hash functions.
+
+=== Storing Documents: Signature Matrix
+
+Storing _several_ hash functions is much _smaller_ than storing the entire characteristic matrix.
+A *signature matrix* stores exactly this: the results of applying multiple hash functions to each document.
+
+#example[
+  The signature matrix for the documents of the last example is:
+  $
+    #align(center)[
+      #table(
+        columns: 5,
+        stroke: (x, y) => if x == 0 or y == 0 { none } else { .05em },
+        [], [$D_1$], [$D_2$], [$D_3$], [$D_4$],
+        [$h_1$], [0], [0], [1], [2],
+        [$h_2$], [0], [1], [1], [3],
+      )
+    ]
+  $
+]
+
+#todo
+
 We will not be able to restore the whole matrix, we get an approximation.
 The more rows of the signature matrix, the more accurate.
 We can random sample the permutations to obtain a decent result.
@@ -676,11 +707,11 @@ Ideally, we want $p_1$ to be very large (close to 1) and $p_2$ to be very small 
 To decrease the gap between "good" and "professional" probabilities, we introduce *AND* and *OR* constructions. This is essentially a "filtering" mechanism: we want the function to return a match only under specific logical constraints.
 
 === The AND-Construction
-We create a new function $f$ by combining $k$ independent functions from $cal{F}$. 
+We create a new function $f$ by combining $k$ independent functions from $cal{F}$.
 $ f(x) = (h_1(x), h_2(x), dots, h_k(x)) $
 The condition $f(x) = f(y)$ holds if and only if $h_i(x) = h_i(y)$ for *all* $i = 1, dots, k$.
 The new sensitivity becomes:
-$ (d_1, d_2, p_1^k, p_2^k)$-sensitive
+$(d_1, d_2, p_1^k, p_2^k)$-sensitive
 *Personal Note:* This effectively lowers the probability of a false positive ($p_2$ drops quickly), but unfortunately, it also lowers $p_1$.
 
 === The OR-Construction
@@ -691,22 +722,22 @@ This construction creates an S-curve, allowing us to sharpen the transition betw
 === Inception
 
 we can apply these constructions to the *extended* family itself. If we take an AND-family and apply an OR-construction to it, we get:
-$ f_(o r) (x) = f_(o r ) (y)$ i.f.f. $exists i : f_i (x) = f_i (y) $
+$f_(o r) (x) = f_(o r ) (y)$ i.f.f. $exists i : f_i (x) = f_i (y)$
 Substituting the underlying probability $p$, the new sensitivity becomes:
 $ (d_1, d_2, 1 - (1 - p_1^k)^f, 1 - (1 - p_2^k)^f) $-sensitive
 
-By stacking these levels (like "Inception"), we can reach extreme values like $(0.1, 0.9, 0.9998, 0.0003)$. 
+By stacking these levels (like "Inception"), we can reach extreme values like $(0.1, 0.9, 0.9998, 0.0003)$.
 #note[
-This works perfectly if our starting family $cal{F}$ is infinite. If the family is finite (e.g., small bit-vectors), we are limited in how many "steps" of inception we can perform before running out of unique functions.
+  This works perfectly if our starting family $cal{F}$ is infinite. If the family is finite (e.g., small bit-vectors), we are limited in how many "steps" of inception we can perform before running out of unique functions.
 ]
 
 == Hamming Distance
 Hamming distance is defined over words of a fixed length $d$ from any alphabet.
 We define a family where each function $f_i$ simply selects the $i$-th coordinate:
-$ f_i (x) = x_i quad$ for $i in {1, dots, d} $
+$f_i (x) = x_i quad$ for $i in {1, dots, d}$
 
 If we pick an index $i$ uniformly at random, the probability that two words $x$ and $y$ match at that coordinate is:
-$ P[f_i (x) = f_i (y)] = 1 - $Hamming$(x, y){d} $
+$ P[f_i (x) = f_i (y)] = 1 - $Hamming$(x, y){d}$
 This yields a $(d_1, d_2, 1 - d_1/d, 1 - d_2 /d)$-sensitive family. Again, the size of our family is limited by the dimensionality $d$ of the vectors.
 
 == Cosine Distance
