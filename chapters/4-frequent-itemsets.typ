@@ -713,7 +713,38 @@ After the full scan:
 
 *Note:* Toivonen never produces False Negatives if it terminates successfully. We just repeat until success (usually 1 or 2 tries).
 
+= Toivonen's Algorithm 
 
+#informally[
+  If Toivonen's algorithm actually terminates and provides an output, we are mathematically guaranteed that there are no false negatives. Let's prove why.
+]
+
+#theorem("No False Negatives in Toivonen's Output")[
+  If Toivonen's algorithm completes without requiring a second pass over the dataset, the output contains all true frequent itemsets (no false negatives).
+]
+
+#proof[
+  Let's prove this by contradiction (by absurd):
+  
+  - Assume Toivonen's algorithm provides an output, meaning every subset $T$ in the negative border of the sample is verified to be *not* frequent in the overall dataset (baskets).
+  - Now, assume there exists a false negative set called $S$.
+  - By definition, $S$ must be frequent in the overall dataset, but was *not* frequent in our initial sample.
+  - Because $S$ is frequent in the dataset, all of its subsets must also be frequent in the dataset (monotonicity).
+  - Let $T'$ be a subset of $S$ ($T' subset.eq S$) that is *not* frequent in the sample, chosen such that it has the minimal possible cardinality.
+  - Because $T'$ has minimal cardinality among the non-frequent subsets, all immediate subsets of $T'$ *are* frequent in the sample.
+  - Therefore, by definition, $T'$ belongs to the *negative border*.
+  - But Toivonen's algorithm checks the negative border. If $T'$ is in the negative border and $T' subset.eq S$ (where $S$ is frequent), $T'$ must also be frequent in the dataset. 
+  - If a set in the negative border is found to be frequent in the entire dataset, the algorithm *halts and requires a new sample*. 
+  - This contradicts our initial assumption that the algorithm successfully provided an output.
+]
+
+#note[
+  In short: If the algorithm finishes, it means no itemset in the negative border was frequent in the main dataset. If no negative border itemset is frequent, no larger set (like our hypothetical $S$) can be frequent either.
+]
+
+#warning[
+  The more candidates we evaluate, the higher the probability that our algorithm will find a frequent itemset in the negative border, forcing it to restart and not terminate.
+]
 
 
 
