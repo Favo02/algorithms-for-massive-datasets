@@ -19,32 +19,54 @@ Not only for commercial purpouse, but also medical.
 
 == Formalization
 
-To transform these observations into actionable knowledge, we define an *Association Rule*:
+To transform these observations into actionable knowledge, we define an *Association Rule*.
+
+#theorem("Association Rule")[
+The form of an association rule is:
+
   $ underbrace(A, "set of items") -> underbrace(b, "item") $
 Where:
 - $A$ is a *set of items* (the antecedent).
 - $b$ is a *single item* (the consequent).
-
-#informally[
-  The implication of this rule is that if all of the items in $A$ appear in some basket, then $b$ is “likely” to appear in that basket as well.
 ]
 
-To also formalize the notion of "likely", we define the *confidence* of an association rule $A -> b$:
+#informally[
+  The implication of this rule is that if all of the items in $A$ appear in some basket, then $b$ is "likely" to appear in that basket as well.
+]
 
+To formalize the notion of "likely", we first define the *support* of an itemset.
 
+#theorem("Support")[
+The *support* of an itemset is the count of baskets that contain all items in it. For a rule $A -> b$, we define:
+$ "Supp"(A union {b}) = |{B in cal(B) : A union {b} subset.eq B}| $
 
+where $cal(B)$ is the set of all baskets.
+]
 
-/ Confidence: adding $b$ to the set $A$, comparing to the number
-  $ "Confidence"(A -> b) = "Supp"(A union {b}) / "Supp"(A) $
-  Of course, the denominator is always bigger than the numerator.
-  When the ratio is closer to $1$, we are pretty confident that the rule is good.
+#note[
+If we have 1,000,000 baskets, the support of the rule $"torch" -> "lollipop"$ is the exact number of times both items appear together. This helps us ignore rare, coincidental occurrences.
+]
+
+Now we can define the *confidence* of an association rule $A -> b$.
+
+#theorem("Confidence")[
+The *confidence* of a rule $A -> b$ is the ratio:
+$ "Conf"(A -> b) = ("Supp"(A union {b}))/("Supp"(A)) $
+]
+
+#note[
+  A confidence of $0.2$ means that $20%$ of the time a customer buys a torch, they also buy a lollipop. This conditional probability allows us to gauge the predictive power of the rule.
+]
+
+Of course, the denominator is always bigger than the numerator.
+When the ratio is closer to $1$, we are pretty confident that the rule is good.
 
   #warning[
     There are exceptions!
     We can have a association rule with an high condidence but are useless.
 
     #example[
-      Each rule with ${"item"} -> "plastic bag"$.
+      Each rule with $"item" -> "plastic bag"$.
       A plastic bag is associated with any basket.
       Regardless of the item, the plastic bag is associated with it.
     ]
@@ -52,63 +74,112 @@ To also formalize the notion of "likely", we define the *confidence* of an assoc
     So we need another metric.
   ]
 
-/ Interest: find items that are independent of the basket they are put in
+#theorem("interest")[
+  the *interest* of a rule $A -> b$ is defined as thee difference between its confidence and its expected probability based on the overall frequency of $b$.
+
   $ "Interest"(A -> b) = "Confidence"(A -> b) - "Supp"({b})/("number of baskets") $
 
-  - *interest is positive*: fraction of baskets that contain A which also contain B is greather the fraction of baskets that contain b.
-    When I have all the items of $A$ we have an higher probability of finding also $b$.
-    So we like rules that have a high confidence and high interest.
-  - *interest is negative*: having all the items of $A$, we have less probability of finding also $b$.
-    It highlights items that competes with each other (e.g. Coca cola vs Pepsi).
-
-For each frequen itemset $"Supp"(I) >= 1$, we calculate:
-$ forall j in I, quad I \\ {j} -> j $
-
-But how do we find frequent itemsets?
-In theory, we can support the support for each itemset, but it is very very expensive in terms of time.
-
-How many possible itemsets exists?
-$ 2^n, quad n = "number of distincts items" $
-and we need to count for each itemset its frequency, so:
-$ 2^n "counters" $
-These number cannot fit in RAM, so we need to do something.
-
-#note[
-  We are in a situation where a classical hard disk is more than enough to store the whole set of baskets, but we are still in the realm of big data beacuse we cannot operate on it without involving special techniques.
 ]
 
-Instead of calculating that for each itemset, we just conside the most frequent pairs:
-$ binom(n, 2) approx n^2/2 $
-Doing some calculations with $2$Gb available, we can at most calculate at best $33000$ pairs.
-We are very limited.
+  - *Positive Interest:* The presence of $A$ increases the probability of finding $b$. This is our primary target for finding meaningful associations.
+  - *Negative Interest:* The presence of $A$ makes $b$ *less* likely (items are "competing" or mutually exclusive).
+
+=== Frequent Itemsets
+
+Before generating rules, we must find *Frequent Itemsets*.
+
+#theorem("frequent itemset")[
+  An itemset $I$ is "frequent" if its support exceeds a chosen threshold $s$:
+  $ "Supp"(I)>=s $
+]
+
+#note[
+  Once we identify a frequent itemset $I$, we can generate candidate rules by testing every $j in I$
+]
+
+But how do we find frequent itemsets?
+
+== Why Brute Force Fails
+
+The "Naive" approach would be to scan the basket file and maintain a counter for every possible itemset.
+However, we quickly run into a *Space Complexity* wall.
+
+- With $n$ distinct items, there are $2^n$ possible itemsets.
+- A small grocery store has hundreds of items, but a giant like Amazon has millions.
+  $2^n$ becomes astronomically large, far exceeding the RAM (or even disk space) of any modern system.
+
+If we limit ourselves to finding only *frequent pairs*, the complexity drops to:
+$ binom(n, 2) = (n(n-1))/(2) approx (n^2)/(2) $
 
 #informally[
   For a marketing campaign, we dont need all possible itemsets, but a few pairs of interesting items are enough.
   But this is a very specific use case.
 ]
 
-== Apriori Algorithms
+While quadratic complexity is significantly better than exponential, it is still taxing for Big Data.
 
-The algorithm is composed of two steps, each time doing a full scan of the baskets.
+#example[
+  Suppose we have 2 GB of RAM ($2^31$ bytes) and use 4-byte integer counters.
+  To store counters for all pairs:
+  $ 4 times (n^2)/(2) = 2n^2 $
+  Setting $2n^2 <= 2^31$ gives $n <= sqrt(2^30) approx 32,768$.
+]
 
 #note[
-  We will measure the complexity of these algorithms as number of passes over the baskets.
+  A supermarket with 33,000 items might barely fit its pair-counters into RAM, but any larger inventory will crash the system.
+]
+
+here we want to find *all* frequent sets exactly.
+To escape the quadratic memory wall without losing accuracy, we need to filter the itemsets we track.
+
+This leads us to a family of algorithms designed to prune the search space, starting with the fundamental *A-Priori Algorithm*.
+
+== Apriori Algorithms
+
+It is organized into two distinct main steps.
+
+#warning[
+  #note[
+    Each step requires a full pass over the basket file. Since the file sits in mass memory (hard disk), the execution time is dominated by Input/Output (I/O) operations.
+  ]
+   For these reasons, We will measure the complexity of these algorithms as number of passes over the baskets.
 ]
 
 The apriori algorithms has a complexity of $2$.
 
-The first scan is meant to build two auxiliary data structures:
-- a mapping between items and a progressive set of natural numbers (progressive IDs)
-  $ {"items"} -> NN $
-- associate each item to its frequency.
-  This can be seen as a table
-  $ {"ID"} -> NN ("frequency") $
-- modify the second data structure, transofrming the second column of the table (the frequency) to a new sequential id, that accounts only for the items that are frequent (that exceed the frequency treshold).
+=== Pass 1
 
+The goal of the first pass is to *identify which individual items are frequent*
+
+The first scan is meant to build two auxiliary data structures:
+
+1. *Item Dictionary:* a mapping between items names and a progressive set of natural numbers (progressive IDs)$ "items" -> NN $
+
+2. *Frequency Table:* A table where `Column 1` is the ID and `Column 2` is the count.
+
+As we scan the baskets, we build these dynamically.
+
+- If an item is new, assign it a new ID.
+- If it exists, increment the counter.
+
+#note[
 These structures are in the order of millions, so in the order of megabytes.
 We have plenty of free RAM for the second pass.
+]
 
-We now do some filtering, exploiting the monotonicity property.
+We now do some filtering, exploiting the monotonicity property. 
+
+we check which items exceed the support threshold $s$.
+
+- *Non-Frequent items:* Labeled as `-1` (or discarded).
+- *Frequent items:* Assigned a new, dense progressive ID ranging from $1$ to $m$ (where $m < N$).
+
+#note[
+How does this scale? Linearly with the number of *distinct* items.
+Even in a worst-case scenario with 1 million distinct items, we are talking about *Megabytes* (maybe 100MB), not Gigabytes. We are using a tiny fraction of RAM, leaving plenty of free space for the heavy lifting in Pass 2.
+]
+
+Before Pass 2, we need a theoretical justification for ignoring certain pairs.
 
 Given two baskets (sets of items), one subset of the other:
 $ A, B, quad A subset.eq B quad --> quad "supp"(A) >= "supp"(B) $
@@ -123,38 +194,50 @@ meaning $A$ is *frequent*.
   $ (A -> B) <--> (not B -> not A) $
 ]
 
-Using this theorem, we can swap negating them:
+We can invert this logic to build a *filter*:
+
 $ A "is not frequent" --> B "is not frequent" $
-If we found a subset that is not frequent, it is useless to keep track of supersets that include that subset.
-If a singleton (an item) is not frequent, we don't need to keep track of any pair of set that contains that item.
+If a single item inside a basket is not frequent, it *cannot* be part of a frequent pair. There is no point in counting pairs involving that item.
 
-Second pass: foreach basketp $B$:
+=== Pass 2
+
+Now we perform the second scan of the basket file.
+
+For each basket, we look at the items inside. Thanks to the renumbering in Pass 1, the algorith only process items that have a valid ID:
+
 $ forall i in B | i " is frequent", forall j in B | j "is frequent", i != j, quad "consider pair" (i, j) $
+
 The trivial way is to organize the indexes as a matrix $C$, so $c_(i j) += 1$.
-But that's not a good idea, because indexing the $i$ and $j$ with items ID, would generate a matrix as big as all the items, including also the not frequent items.
 
-For that reason we calculated the new ID, keeping only the items that are frequent.
-Instead of using $c_(i j)$ with $i j$ as ID, we use $c_(tilde(i) tilde(j))$ with $tilde(i), tilde(j)$ as the new ID.
+*are we wasting space?*
 
-We are still wasting a lot of time, because the matrix both contains $tilde(i) tilde(j)$ and $tilde(j) tilde(i)$.
-In other words we are considering ordered couples instead of simple couples.
+==== Triangular Matrix Optimization
 
-The best data structure would be a "triangular" data structure, where the index of the row is always smaller then the index of the column.
+If we use a standard matrix for $C$, we have two problems:
 
-We can simply build this data structure, using a long array.
-We know for each column the total number of cells before it, so we can have constant access time to each cell.
-The offset starting from $i, j$ is (with $n$ being the number of items):
-$ (i-1)(n - i/2)+j-1 $
-This data structure is called triangular matrix.
+1. *Symmetry:* $C[i, j]$ is the same as $C[j, i]$. We don't need to store both.
+2. *Sparseness:* We only care about frequent items (which we solved by remapping IDs), but a full square matrix still scales quadratically.
+
+Instead of using $c_(i j)$ with $i j$ as ID, we can use $c_(tilde(i) tilde(j))$ with $tilde(i), tilde(j)$ as the new ID.
+
+But We are still wasting a lot of time, because the matrix both contains $tilde(i) tilde(j)$ and $tilde(j) tilde(i)$.
+
+Since the order of indices doesn't matter (the pair ${A, B}$ is the same as ${B, A}$), we can impose a *Lexicographic Order* (always store such that $i < j$).
+This allows us to store only the lower (or upper) triangular part of the matrix.
+Instead of a 2D array, we can map the 2D coordinates to a 1D array index:
+$ k = (i-1)(n - i/2) + j - i $
+This saves roughly half the space.
 
 With this data structure the problem is solved: we can just browse the data structure and emit all pairs.
 
-During that phase we also calculate the real frequecy of that couple and emit only if its good.
-That way we get no *False positive*.
+Are we missing anything?
 
-What about *False negative*? We don't have even False negative.
+- *False Negatives?* No. The monotonicity property guarantees that we never filter out a pair that *could* have been frequent. If a pair was destined to be frequent, both its constituent items *must* have survived Pass 1.
 
-Does it always work? No.
+- *False Positives?* No, because we are actually counting the occurrences in Pass 2.
+
+Does it always work? No!
+
 The problem for the trivial algorithm was that the number of counters was too much, so we applied a filter on the pairs we count.
 But we have no guaranteed that this filtering actually reduces enough the number of pairs processed.
 
@@ -163,6 +246,7 @@ So, if the algorithm works, we have a correct solution, but the algorithm could 
 We could also have items that are frequent alone but are never bought togheter, so we could have some $0$ entries in the triangular matrix.
 
 We need something robust to sparseness.
+
 We already seen something similar during PageRank, instead of storing a matrix we store a triple $(tilde(i), tilde(j), "counter")$.
 Where the counter is $0$ we discard the triple.
 
@@ -176,6 +260,7 @@ We could use hash functions to build an index on these indices to get immediate 
 
 // favo's notes
 
+=== Hash Table Approach for Triples
 
 For this end, we build an HashMap that hashes the two indices $i, j$ into a bucket.
 Collisions are handled using a linked list on each bucket.
@@ -381,149 +466,6 @@ The support for the candidates is used to remove FP.
 If the actual support for all the negative border is less than the treshold, then the result is correct and the candidates are outputted.
 If at least one of the negative border is a FN, then no output is produced as it would not be exact.
 
-// TODO: merge into Favo02 lecture notes.
-
-== Market-Basket Analysis
-
-The study of frequent itemsets originated from techniques designed to analyze customer behavior. The fundamental objective is to exploit statistical patterns in purchasing data to understand how items relate to one another.
-
-Patterns often emerge in "baskets" (the set of items a customer buys in a single transaction):
-- *Predictable associations:* Customers buying hamburgers are statistically likely to buy ketchup.
-- *Unintuitive associations:* Data analysis famously revealed "Beer and Diapers" or "Torch-lights and Lollipops" as statistically significant pairs.
-
-These patterns allow retailers to optimize shelf placement and inventory based on statistical rules rather than just intuition.
-
-To transform these observations into actionable knowledge, we define an *Association Rule*:
-$ A -> b $
-Where:
-- $A$ is a *set of items* (the antecedent).
-- $b$ is a *single item* (the consequent).
-
-However, not all generated rules are useful; some may be "degenerate" or statistically insignificant.
-To filter these, we require metrics to measure the effectiveness and relevance of a rule.
-
-=== Support and Confidence
-
-The raw data consists of a "Basket File" containing all checkout records. Let $cal{B}$ be the set of all baskets and $I$ be a set of items.
-
-==== 1. Support
-The *Support* of an itemset $I$ is the absolute frequency (count) of baskets that contain $I$.
-$ S u p p (I) = |{B in cal(B) : I subset.eq B}| $
-
-#note[
-  If we have 1,000,000 baskets, we count exactly how many times the pair "{torch, lollipop}" appears. This helps us ignore rare, coincidental occurrences.
-]
-
-==== 2. Confidence
-The *Confidence* of a rule $A -> b$ measures how often the item $b$ appears in baskets that already contain the set $A$. It is defined as the ratio:
-$ C o n f (A -> b) = (S u p p (A and(b)))/(S u p p (A)) $
-
-#note[
-  A confidence of $0.2$ means that $20%$ of the time a customer buys a torch, they also buy a lollipop. This conditional probability allows us to gauge the predictive power of the rule.
-]
-
-Even with high confidence, a rule might be misleading if the item $b$ is already extremely common. To account for this, we introduce the concept of *Interest*.
-
-The interest of a rule $A -> b$ is defined as the difference between its confidence and its expected probability based on the overall frequency of $b$:
-
-$ I n t e r e s t (A -> b) = C o n f (A > b) - S u p p (b)/("Total Baskets") $
-
-- *Positive Interest:* The presence of $A$ increases the probability of finding $b$. This is our primary target for finding meaningful associations.
-- *Negative Interest:* The presence of $A$ makes $b$ *less* likely (items are "competing" or mutually exclusive).
-
-=== Frequent Itemsets
-Before generating rules, we must find *Frequent Itemsets*. An itemset $I$ is "frequent" if its support exceeds a chosen threshold $s$:
-$ S u p p (I) >= s $
-
-#note[
-  Once we identify a frequent itemset $I$, we can generate candidate rules by testing every $j in I$
-]
-
-== Why Brute Force Fails
-
-The "Naive" approach would be to scan the basket file and maintain a counter for every possible itemset. However, we quickly run into a *Space Complexity* wall.
-
-- With $n$ distinct items, there are $2^n$ possible itemsets.
-- A small grocery store has hundreds of items, but a giant like Amazon has millions. $2^n$ becomes astronomically large, far exceeding the RAM (or even disk space) of any modern system.
-
-If we limit ourselves to finding only *frequent pairs*, the complexity drops to:
-$ binom(n, 2) = (n(n-1))/(2) approx (n^2)/(2) $
-
-While quadratic complexity is significantly better than exponential, it is still taxing for Big Data.
-
-#example[
-  Suppose we have 2 GB of RAM ($2^31$ bytes) and use 4-byte integer counters.
-  To store counters for all pairs:
-  $ 4 times (n^2)/(2) = 2n^2 $
-  Setting $2n^2 <= 2^31$ gives $n <= sqrt(2^30) approx 32,768$.
-]
-
-#note[
-  A supermarket with 33,000 items might barely fit its pair-counters into RAM, but any larger inventory will crash the system.
-]
-
-Unlike the LSH approach where we accepted approximate solutions via hashing, here we want to find *all* frequent sets exactly. To escape the quadratic memory wall without losing accuracy, we need to filter the itemsets we track.
-
-This leads us to a family of algorithms designed to prune the search space, starting with the fundamental *A-Priori Algorithm*.
-
-The A-Priori algorithm is a constructive solution to the frequent itemset problem. It is organized into two distinct main steps.
-
-
-#warning[
-  Each step requires a full pass over the basket file. Since the file sits in mass memory (hard disk), the execution time is dominated by Input/Output (I/O) operations.
-]
-
-=== Pass 1
-The goal of the first pass is to identify which individual items are frequent. We maintain two data structures in RAM:
-
-1. *Item Dictionary:* Maps item names to a univocal integer ID ($0 dots N$).
-2. *Frequency Table:* A table where `Column 1` is the ID and `Column 2` is the count.
-
-As we scan the baskets, we build these dynamically.
-- If an item is new, assign it a new ID.
-- If it exists, increment the counter.
-
-Once the pass is complete, we check which items exceed the support threshold $s$.
-- *Non-Frequent items:* Labeled as `-1` (or discarded).
-- *Frequent items:* Assigned a new, dense progressive ID ranging from $1$ to $m$ (where $m < N$).
-
-How does this scale? Linearly with the number of *distinct* items.
-Even in a worst-case scenario with 1 million distinct items, we are talking about *Megabytes* (maybe 100MB), not Gigabytes. We are using a tiny fraction of RAM, leaving plenty of free space for the heavy lifting in Pass 2.
-
-Before Pass 2, we need a theoretical justification for ignoring certain pairs. We exploit *Monotonicity*:
-If we have a set $A$ and a superset $B$ (so $A subset.eq B$), the support must satisfy:
-$ S u p p (A) >= S u p p (B) $
-
-If $B$ is a frequent itemset, then by definition $S u p p (B) >= s$. By transitivity, $S u p p (A) >= s$, so $A$ must also be frequent.
-
-We can invert this logic to build a filter:
-$ A $ is NOT frequent $-> B$ is NOT frequent
-If a single item inside a basket is not frequent, it *cannot* be part of a frequent pair. There is no point in counting pairs involving that item.
-
-=== Pass 2
-Now we perform the second scan of the basket file.
-For each basket, we look at the items inside. Thanks to our renumbering in Pass 1, we metaphorically "blind" ourselves to non-frequent items. We only process items that have a valid ID.
-
-For every pair of frequent items $i, j$ in the basket (where $i != j$):
-$ C[i, j] <- C[i, j] + 1 $
-
-*Wait, are we wasting space?*
-If we use a standard matrix for $C$, we have two problems:
-1. *Symmetry:* $C[i, j]$ is the same as $C[j, i]$. We don't need to store both.
-2. *Sparseness:* We only care about frequent items (which we solved by remapping IDs), but a full square matrix still scales quadratically.
-
-*The Triangular Matrix Optimization:*
-Since the order of indices doesn't matter (the pair ${A, B}$ is the same as ${B, A}$), we can impose a *Lexicographic Order* (always store such that $i < j$).
-This allows us to store only the lower (or upper) triangular part of the matrix.
-Instead of a 2D array, we can map the 2D coordinates to a 1D array index:
-$ k = (i-1)(n - i/2) + j - i $
-This saves roughly half the space.
-
-=== Conclusion on Correctness
-Are we missing anything?
-- *False Negatives?* No. The monotonicity property guarantees that we never filter out a pair that *could* have been frequent. If a pair was destined to be frequent, both its constituent items *must* have survived Pass 1.
-- *False Positives?* No, because we are actually counting the occurrences in Pass 2.
-
 
 // jack's notes of secod part 05/02/2026
 
@@ -618,17 +560,17 @@ PCY extends A-Priori by optimizing the *First Pass*.
 We utilize the idle memory to maintain a *Hash Table* of pair counts alongside the item counts.
 - We treat the free memory as a large array of integers (buckets).
 - For every basket, for every pair $(i, j)$ in the basket:
-  $ "bucket" = h(i, j) \pmod{\text{array\_size}} $
-  $ \text{Array}[\text{bucket}] \mathrel{+}= 1 $
+  $ "bucket" = h(i, j) \pmod "array size"} $
+  $ "Array"["bucket"] += 1 $
 
 === 3.2 Between Pass 1 and Pass 2
 At the end of Pass 1, we analyze the hash buckets against the support threshold $s$.
-- If $\text{Array}[b] < s$: No pair hashing to bucket $b$ can be frequent.
-- If $\text{Array}[b] \ge s$: Pairs hashing to $b$ *might* be frequent (collisions possible).
+- If $"Array"[b] < s$: No pair hashing to bucket $b$ can be frequent.
+- If $"Array"[b] \ge s$: Pairs hashing to $b$ *might* be frequent (collisions possible).
 
 *Compression:*
 We do not need the actual counts for Pass 2, only the boolean status (Frequent/Not Frequent). We compress the integer array into a *Bitmap*:
-- If count $\ge s \to$ bit = 1.
+- If count $>= s ->$ bit = 1.
 - If count $< s \to$ bit = 0.
 
 *Space Gain:* An integer (32 bits) is replaced by 1 bit. We reclaim $31/32$ of the memory to use for the actual counters in Pass 2.
@@ -681,7 +623,7 @@ Up to this point, we assumed we had to process the entire dataset (stored on a h
 Instead of scanning the entire disk, we load a random sample of the baskets into RAM.
 - Let $p$ be the fraction of the total baskets we sample ($0 < p < 1$).
 - We run an in-memory algorithm (like A-Priori) on this sample.
-- Since the dataset size is reduced by factor $p$, the support threshold must be scaled accordingly: $s_{sample} = p dot s$.
+- Since the dataset size is reduced by factor $p$, the support threshold must be scaled accordingly: $s_("sample") = p dot s$.
 
 *The Risk of Errors:*
 Since we are using a statistical estimator, the output is not guaranteed to be exact. We face two types of errors:
@@ -713,9 +655,9 @@ We must prove that if a set is frequent globally, it *must* be selected as a can
 
 *Proof (by Contradiction):*
 Let's assume the opposite: $I$ is globally frequent ($S(I) \ge s$), but it is *not* frequent in any chunk.
-- If $I$ is not frequent in chunk $C_i$, then $Supp_{C_i}(I) < p dot s$.
+- If $I$ is not frequent in chunk $C_i$, then $"Supp"_ (C_i)(I) < p dot s$.
 - The total support is the sum of supports in all chunks:
-  $ S(I) = sum_{i=1}^{k} Supp_{C_i}(I) $
+  $ S(I) = sum_{i=1}^{k} "Supp"_(C_i)(I) $
 - Substituting our assumption:
   $ S(I) < sum_{i=1}^{k} (p dot s) $
   $ S(I) < k dot (p dot s) $
@@ -748,7 +690,7 @@ Toivonen's algorithm is a *randomized algorithm*. Unlike SON, it does not guaran
 
 === 7.2 The Negative Border
 Toivonen introduces a critical concept to detect failure: the *Negative Border*.
-#definition[
+#theorem("")[
 An itemset $I$ is in the Negative Border if:
   1.  $I$ is *not* frequent in the sample.
   2.  *All* immediate subsets of $I$ (sets created by removing 1 item) *are* frequent in the sample.
