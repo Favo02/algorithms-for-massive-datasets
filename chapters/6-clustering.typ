@@ -93,3 +93,90 @@ $ f(x) = 1/ ((2 pi)^(d/2) product_(i = 1)^d sigma_i) exp (- sum_(i=1)^d 1/2 ((x_
 
 We use the Mahalobis Distance to calcualate the distance between a point and a cluster:
 $ d(x, underbrace(c, "centroid")) = sum_(i=1)^d ((x_i - c_i)/sigma_i)^2 $
+
+
+//TODO merge jack's notes
+
+= Clustering
+
+Clustering is a form of *Unsupervised Learning*.
+The goal is to group observations based on some concept of *similarity*.
+
+== Curse of Dimensionality
+
+Traditional algorithms (like K-Means) struggle when data dimensionality $d$ grows.
+In high-dimensional spaces, distances lose their meaning.
+
+#example[
+  If we draw points uniformly in a high-dimensional unit hypercube, the Euclidean distance between any two random points tends to concentrate.
+  $ 1 <= d(x, y) <= sqrt(d) $
+  
+  Operationally, it's worse: *all pairs of points tend to be at nearly the same distance.*
+]
+
+This implies that finding the "nearest neighbor" becomes meaningless because the nearest and farthest points are almost equidistant.
+*Alternative:* Often **Cosine Distance** (angle between vectors) is more robust in high dimensions:
+$ "dist"(x,y) = (x dot y) / (||x|| dot ||y||) $
+
+== Clustering Strategies
+
+Algorithms generally fall into two classes:
+1.  *Agglomerative:* Start with $N$ clusters (one per point) and merge the closest ones iteratively.
+2.  *Point Assignment:* Iterate through points and assign them to the best existing cluster.
+
+=== Centroids vs Clustroids
+
+How do we represent a cluster?
+
+- *Centroid:* The geometric center (average) of points. Valid in Euclidean space.
+- *Clustroid:* A representative point *selected from the actual data points*.
+    - Used in *Non-Euclidean* spaces (where we can't compute an "average" point).
+    - The clustroid is usually the point that *minimizes the sum of distances* (or max distance) to other points in the cluster.
+
+=== Metrics for Selection
+
+To choose the number of clusters $k$ or to decide when to stop merging, we look for an *Elbow* (or Ankle) in the graph of the objective function (for example, diameter or radius of clusters) vs $k$.
+
+- *Radius:* Distance from representative to furthest point.
+- *Diameter:* Max distance between any two points in the cluster.
+
+== BFR Algorithm
+
+The *BFR* algorithm is a "Big Data" replacement for K-Means.
+It is designed for high-dimensional data and assumes clusters follow a *Multivariate Gaussian Distribution*.
+
+#note[
+  Clusters look like concentric ellipses (or circles, if axes are independent).
+]
+=== Process
+
+We cannot load all data into RAM, so we process data in *chunks*.
+For each chunk, we classify points into three sets:
+
+1.  *Discard Set*: Points that clearly belong to a cluster. We update the cluster statistics and *discard* the points themselves to save memory.
+2.  *Compressed Set*: Points that are close to each other but not close to any main cluster. We store them as "mini-clusters" to potentially merge later.
+3.  *Retained Set (RS)*: Outliers or points that don't fit anywhere. We must keep these in memory as individual points.
+
+=== Summarizing Clusters
+
+To discard points but keep the cluster info, we don't store the points.
+We store only three sufficient statistics:
+
+1.  $N$: The number of items.
+2.  $"SUM"$: Vector sum of all elements (vector of length $d$).
+3.  $"SUMSQ"$: Vector sum of squared components.
+
+$ "SUMSQ"_i = sum_(x in "cluster") x_i^2 $
+
+Why this representation?
+
+- *Additivity:* If we merge two clusters, we just sum their $N$, $"SUM"$, and $"SUMSQ"$.
+- *Efficiency:* $"SUM"$ allows calculating the Centroid. $"SUMSQ"$ allows calculating the Variance (and standard deviation) efficiently.
+- *Memory:* Fixed size regardless of $N$.
+
+=== Mahalanobis Distance
+
+To decide if a point belongs to a cluster, we don't just use Euclidean distance.
+We use the *Mahalanobis Distance*
+
+If a point is within a threshold distance, it goes to the discard set. Otherwise, it might go to the compressed set or the retained set.
