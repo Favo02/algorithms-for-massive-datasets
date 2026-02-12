@@ -312,3 +312,119 @@ If we don't have enough space to count exact frequencies, we use AMS to estimate
     The estimate for the second moment is: $ n * (2c - 1) $
 
     To get a highly accurate result, extract many random positions, calculate this value for each, and average the results.
+
+    
+
+// jack's note 12/02/2026
+
+= Data Streams: The Second Moment
+
+Recall that items in the stream must be ordered.
+
+#example[
+  Consider the stream: $ a, b, c, b, d, a, c, d, a, b, d, c, a, a, b $
+  The length of the stream is $n = 15$.
+  The frequencies are:
+  - $m_1 (a) = 5$
+  - $m_2 (b) = 4$
+  - $m_3 (c) = 3$
+  - $m_4 (d) = 3$
+  
+  The second moment is:
+  $ F_2 = sum_i m_i^2 = 25 + 16 + 9 + 9 = 59 $
+]
+
+== The AMS Algorithm
+
+The AMS algorithm allows us to estimate $F_2$ by selecting positions in the stream uniformly at random.
+We are free to choose how many positions (variables) we select; the number of positions affects the accuracy.
+
+Let's say we pick three positions at random: the first `c`, the second `d`, and the penultimate `a`.
+
+For each selected position, we track:
+1.  The *element* at that position (for example "c").
+2.  The *value* ($r$): the number of co-occurrences of that specific element from that position *onwards* until the end of the stream.
+
+#warning[
+  I cannot access the stream like a vector! I only have access to the *last* element seen. Therefore, I need to store the element itself to check for future matches.
+]
+
+=== The Estimator
+
+For each selected position $i$, we define a random variable $X$:
+$ X = n (2 dot r - 1) $
+Where:
+- $n$ is the total stream length.
+- $r$ is the count of the element from the chosen position onwards.
+
+In our example ($n=15$):
+- If we picked the first `c`: it appears 3 times from there. $X_1 = 15(2 dot 3 - 1) = 75$.
+- If we picked the second `b`: it appears 2 times from there. $X_2 = 15(2 dot 2 - 1) = 45$.
+- If we picked the last `c`: it appears 1 time. $X_3 = 15(2 dot 1 - 1) = 15$.
+
+We basically create a specification of a random variable whose expected value is the second moment. If we average multiple estimates, the value converges to the true $F_2$.
+
+=== Proof of Expectation
+
+We want to prove that $E[X] = F_2 = sum m_i^2$.
+
+The probability of selecting any specific position $i$ in a stream of length $n$ is $1/n$.
+So, the expected value is the sum over all possible positions $p$:
+$ E[X] = sum_(p=1)^n P("picking " p) dot (n(2r_p - 1)) $
+$ E[X] = sum_(p=1)^n 1/n dot n(2r_p - 1) = sum_(p=1)^n (2r_p - 1) $
+
+We can rearrange this sum by grouping not by position, but by *element*.
+Let's look at element `a`. It appears $m_a = 5$ times.
+Working from right to left (end of stream to start), the values of $r$ for `a` will be:
+- Last `a`: $r=1$
+- Second to last `a`: $r=2$
+- ...
+- First `a`: $r=5$
+
+So for each distinct item $i$, the contribution to the total sum is:
+$ sum_(j=1)^(m_i) (2j - 1) $
+
+#theorem("Sum of Odd Numbers")[
+  The sum of the first $k$ odd numbers is equal to $k^2$.
+  $ sum_(j=1)^k (2j - 1) = k^2 $
+]
+
+Substituting this back into our expectation:
+$ E[X] = sum_(i in "items") (sum_(j=1)^(m_i) (2j - 1)) = sum_(i in "items") m_i^2 = F_2 $
+
+This confirms that $X$ is an unbiased estimator for the second moment.
+
+== Handling Infinite Streams (Reservoir Sampling)
+
+In the proof above, we assumed we knew $n$ (the stream length). But in a real stream, $n$ grows continuously and we don't know when it ends.
+If we run out of memory, we can't just "add" more counters.
+
+*Solution:* We maintain a fixed number of counters $s$ (based on RAM) and use *Reservoir Sampling*.
+
+1.  *Initialization:* Store the first $s$ positions with probability 1.
+2.  *Invariant:* At any time $n$, every position seen so far has been chosen with probability $s/n$.
+3.  *Update:* When the $(n+1)$-th element arrives:
+    - We keep it with probability $s/(n+1)$.
+    - If kept, we discard one of the existing $s$ counters uniformly at random.
+
+=== Proof of Uniform Probability
+
+We need to prove that after processing element $n+1$, the probability of any specific previous element remaining in the sample is still uniform ($s/(n+1)$).
+
+Let's use the *Law of Total Probability*. A stored element survives if:
+1.  It was already in the memory (Prob: $s/n$).
+2.  AND it was NOT evicted.
+
+It is NOT evicted if:
+- The new element was not picked (Prob: $1 - s/(n+1)$).
+- OR the new element was picked, but the random index chosen to be replaced was *not* our element.
+
+$ P("survive") = underbrace(s/n, "was in") dot [ underbrace((1 - s/(n+1)), "new ignored") + underbrace(s/(n+1) dot (s-1)/s, "new kept, other swapped") ] $
+
+Simplifying the term in brackets:
+$ 1 - s/(n+1) + (s-1)/(n+1) = (n + 1 - s + s - 1)/(n+1) = n/(n+1) $
+
+So the total probability is:
+$ s/n dot n/(n+1) = s/(n+1) $
+
+The invariant holds. We can estimate moments on infinite streams without running out of memory.
