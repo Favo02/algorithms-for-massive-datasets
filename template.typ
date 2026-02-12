@@ -24,6 +24,8 @@
 #let mp(body) = text(fill: purple, $#body$)    // purple
 #let mb(body) = text(fill: blue, $#body$)      // blue
 
+#let comment(body) = text(size: 8pt, "(" + body + ")")
+
 // ============================================================================
 // COLORED INFO BOXES
 // ============================================================================
@@ -131,6 +133,12 @@
       ]
     }
   ]
+}
+
+#let appendix(body) = {
+  set heading(numbering: "A.1. ")
+  counter(heading).update(0)
+  body
 }
 
 // ============================================================================

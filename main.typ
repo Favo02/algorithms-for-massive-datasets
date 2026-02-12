@@ -30,7 +30,13 @@
   ],
 )
 
+#part("Theory")
 #include "chapters/1-hdfs-mapreduce.typ"
-
+#include "chapters/2-link-analysis.typ"
 
 #include "chapters/4-frequent-itemsets.typ"
+
+#show: appendix
+#part("Implementation")
+
+#include "chapters/a-spark.typ"
