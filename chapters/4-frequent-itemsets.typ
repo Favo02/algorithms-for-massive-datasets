@@ -7,15 +7,15 @@ The fundamental objective is to *exploit statistical patterns* in purchasing dat
 
 Patterns often emerge in "baskets" (the set of items a customer buys in a single transaction):
 - *Predictable associations:* Customers buying hamburgers are statistically likely to buy ketchup.
-- *Unintuitive associations:* Data analysis famously revealed "Beer and Diapers" or "Torch-lights and Lollipops" as statistically significant pairs. 
+- *Unintuitive associations:* Data analysis famously revealed "Beer and Diapers" or "Torch-lights and Lollipops" as statistically significant pairs.
 
 #example[
-This could also be used for items suggested by Amazon or Netflix in the homepage.
-Spoiler: it is not used, not because it does not work, but because there are even more effective strategies.
-One of these is User Collaborative Filtering, using similar items (last chapters).
-Items are users, and after finding similar users simply suggest the same things bought by similar users.
+  This could also be used for items suggested by Amazon or Netflix in the homepage.
+  Spoiler: it is not used, not because it does not work, but because there are even more effective strategies.
+  One of these is User Collaborative Filtering, using similar items (last chapters).
+  Items are users, and after finding similar users simply suggest the same things bought by similar users.
 
-Not only for commercial purposes, but also medical.
+  Not only for commercial purposes, but also medical.
 ]
 
 == Formalization
@@ -23,12 +23,12 @@ Not only for commercial purposes, but also medical.
 To transform these observations into actionable knowledge, we define an *Association Rule*.
 
 #theorem("Association Rule")[
-The form of an association rule is:
+  The form of an association rule is:
 
   $ underbrace(A, "set of items") -> underbrace(b, "item") $
-Where:
-- $A$ is a *set of items* (the antecedent).
-- $b$ is a *single item* (the consequent).
+  Where:
+  - $A$ is a *set of items* (the antecedent).
+  - $b$ is a *single item* (the consequent).
 ]
 
 #informally[
@@ -38,22 +38,22 @@ Where:
 To formalize the notion of "likely", we first define the *support* of an itemset.
 
 #theorem("Support")[
-The *support* of an itemset is the count of baskets that contain all items in it. For a rule $A -> b$, we define:
-$ "Supp"(A union {b}) = |{B in cal(B) : A union {b} subset.eq B}| $
+  The *support* of an itemset is the count of baskets that contain all items in it. For a rule $A -> b$, we define:
+  $ "Supp"(A union {b}) = |{B in cal(B) : A union {b} subset.eq B}| $
 
-where $cal(B)$ is the set of all baskets.
+  where $cal(B)$ is the set of all baskets.
 ]
 
 #note[
-If we have 1,000,000 baskets, the support of the rule $"torch" -> "lollipop"$ is the exact number of times both items appear together.
-This helps us ignore rare, coincidental occurrences.
+  If we have 1,000,000 baskets, the support of the rule $"torch" -> "lollipop"$ is the exact number of times both items appear together.
+  This helps us ignore rare, coincidental occurrences.
 ]
 
 Now we can define the *confidence* of an association rule $A -> b$.
 
 #theorem("Confidence")[
-The *confidence* of a rule $A -> b$ is the ratio:
-$ "Conf"(A -> b) = ("Supp"(A union {b}))/("Supp"(A)) $
+  The *confidence* of a rule $A -> b$ is the ratio:
+  $ "Conf"(A -> b) = ("Supp"(A union {b}))/("Supp"(A)) $
 ]
 
 #note[
@@ -64,18 +64,18 @@ $ "Conf"(A -> b) = ("Supp"(A union {b}))/("Supp"(A)) $
 Of course, the denominator is always bigger than the numerator.
 When the ratio is closer to $1$, we are pretty confident that the rule is good.
 
-  #warning[
-    There are exceptions!
-    We can have an association rule with a high confidence but that is useless.
+#warning[
+  There are exceptions!
+  We can have an association rule with a high confidence but that is useless.
 
-    #example[
-      Each rule with $"item" -> "plastic bag"$.
-      A plastic bag is associated with any basket.
-      Regardless of the item, the plastic bag is associated with it.
-    ]
-
-    So we need another metric.
+  #example[
+    Each rule with $"item" -> "plastic bag"$.
+    A plastic bag is associated with any basket.
+    Regardless of the item, the plastic bag is associated with it.
   ]
+
+  So we need another metric.
+]
 
 #theorem("Interest")[
   The *interest* of a rule $A -> b$ is defined as the difference between its confidence and its expected probability based on the overall frequency of $b$.
@@ -84,9 +84,9 @@ When the ratio is closer to $1$, we are pretty confident that the rule is good.
 
 ]
 
-  - *Positive Interest:* The presence of $A$ increases the probability of finding $b$.
-    This is our primary target for finding meaningful associations.
-  - *Negative Interest:* The presence of $A$ makes $b$ *less* likely (items are "competing" or mutually exclusive).
+- *Positive Interest:* The presence of $A$ increases the probability of finding $b$.
+  This is our primary target for finding meaningful associations.
+- *Negative Interest:* The presence of $A$ makes $b$ *less* likely (items are "competing" or mutually exclusive).
 
 === Frequent Itemsets
 
@@ -146,7 +146,7 @@ It is organized into two distinct main steps.
   #note[
     Each step requires a full pass over the basket file. Since the file sits in mass memory (hard disk), the execution time is dominated by Input/Output (I/O) operations.
   ]
-   For these reasons, we will measure the complexity of these algorithms as number of passes over the baskets.
+  For these reasons, we will measure the complexity of these algorithms as number of passes over the baskets.
 ]
 
 The Apriori algorithm has a complexity of $2$.
@@ -167,11 +167,11 @@ As we scan the baskets, we build these dynamically.
 - If it exists, increment the counter.
 
 #note[
-These structures are in the order of millions, so in the order of megabytes.
-We have plenty of free RAM for the second pass.
+  These structures are in the order of millions, so in the order of megabytes.
+  We have plenty of free RAM for the second pass.
 ]
 
-We now do some filtering, exploiting the monotonicity property. 
+We now do some filtering, exploiting the monotonicity property.
 
 We check which items exceed the support threshold $s$.
 
@@ -179,9 +179,9 @@ We check which items exceed the support threshold $s$.
 - *Frequent items:* Assigned a new, dense progressive ID ranging from $1$ to $m$ (where $m < N$).
 
 #note[
-How does this scale? Linearly with the number of *distinct* items.
-Even in a worst-case scenario with 1 million distinct items, we are talking about *Megabytes* (maybe 100MB), not Gigabytes.
-We are using a tiny fraction of RAM, leaving plenty of free space for the heavy lifting in Pass 2.
+  How does this scale? Linearly with the number of *distinct* items.
+  Even in a worst-case scenario with 1 million distinct items, we are talking about *Megabytes* (maybe 100MB), not Gigabytes.
+  We are using a tiny fraction of RAM, leaving plenty of free space for the heavy lifting in Pass 2.
 ]
 
 Before Pass 2, we need a theoretical justification for ignoring certain pairs.
@@ -245,8 +245,8 @@ Are we missing anything?
 Does it always work? No!
 
 #note[
-The problem for the trivial algorithm was that the number of counters was too much, so we applied a filter on the pairs we count.
-But we have no guarantee that this filtering actually reduces enough the number of pairs processed.
+  The problem for the trivial algorithm was that the number of counters was too much, so we applied a filter on the pairs we count.
+  But we have no guarantee that this filtering actually reduces enough the number of pairs processed.
 ]
 
 So, if the algorithm works, we have a correct solution, but the algorithm could crash because of the amount of RAM required is too much.
@@ -292,15 +292,15 @@ If the matrix has less than $1/3$ of empty entries, then the triangular matrix i
 
 #example[
   $n = 100,000$ items, $b = 10,000,000$ baskets (10 items each).
-  
+
   *Option A: Triangular Matrix*
   $ binom(n, 2) approx 5 times 10^9 "counters" $
-  
+
   *Option B: Hash Table (Worst Case)*
   - Pairs per basket: $binom(10, 2) = 45$
   - Total pairs: $10^7 times 45 = 4.5 times 10^8$
   - Space per pair (approx 3 ints): $4.5 times 10^8 times 3 = 1.35 times 10^9$ integers
-  
+
   The hash table requires less than $1/3$ of the space of the matrix. Even considering the worst case, using the hashmap approach is preferable as there are more than $2/3$ empty entries.
 ]
 
@@ -436,7 +436,7 @@ Since we are using a statistical estimator, the output is not guaranteed to be e
 
 #warning[
   *False Positives* are "less bad" than False Negatives. Why? Because we can treat the sample output as a set of *Candidate Sets*. With one full scan of the dataset, we can verify their actual support and remove the FPs.
-  
+
   *False Negatives* are fatal. If the algorithm doesn't propose a set, we cannot verify it later. It is simply lost.
 ]
 
@@ -481,14 +481,14 @@ But what about FN?
   $I$ is frequent in the basket file, but $I$ is not in the output.
   Meaning it was never in output of the processing of each chunk: $I$ is not frequent in *any* chunk.
   $ forall "chunk" c, quad "Supp"_c(I) < p s $
-  
+
   $
     "Supp"(I) & = sum_c "Supp"_c(I) \
               & < sum_c p s \
               & < p s dot 1/p \
               & < s
   $
-  
+
   Because $I$ is frequent, it must be $"Supp"(I) >= s$, which is a contradiction. $qed$
 ]
 
@@ -539,7 +539,7 @@ Then, on the candidate sets we compute a *negative border*: a group of sets that
 
 #note[
   / Immediate subset: subset obtained by removing exactly one element.
-  
+
   The empty set is always considered frequent.
 ]
 
@@ -556,8 +556,8 @@ The idea of the negative border is to scan the baskets file and keep track of th
 After the full scan:
 1. *Filter Candidates:* The support for the candidates is used to remove FP. Keep those with $"Supp"(I) >= s$.
 2. *Check Negative Border:*
-   - If the actual support for *all* the negative border is less than the threshold, then the result is correct and the candidates are outputted.
-   - If *any* member of the negative border is found to be frequent ($"Supp"(I) >= s$), the algorithm *failed* and no output is produced, as it would not be exact.
+  - If the actual support for *all* the negative border is less than the threshold, then the result is correct and the candidates are outputted.
+  - If *any* member of the negative border is found to be frequent ($"Supp"(I) >= s$), the algorithm *failed* and no output is produced, as it would not be exact.
 
 #warning[
   If a set in the Negative Border is actually frequent, it means our sample threshold was not low enough—we "missed" a set that should have been a candidate. Since Monotonicity implies we might have missed its supersets too, we must discard the results, resample, and restart.
@@ -579,7 +579,6 @@ After the full scan:
 
 #proof[
   Let's prove this by contradiction:
-  
   - Assume Toivonen's algorithm provides an output, meaning every subset $T$ in the negative border of the sample is verified to be *not* frequent in the overall dataset.
   - Now, assume there exists a false negative set called $S$.
   - By definition, $S$ must be frequent in the overall dataset, but was *not* frequent in our initial sample.
@@ -594,6 +593,6 @@ After the full scan:
 
 #note[
   In short: If the algorithm finishes, it means no itemset in the negative border was frequent in the main dataset. If no negative border itemset is frequent, no larger set (like our hypothetical $S$) can be frequent either.
-  
+
   Toivonen never produces False Negatives if it terminates successfully. We just repeat until success (usually 1 or 2 tries).
 ]
