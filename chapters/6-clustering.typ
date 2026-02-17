@@ -94,6 +94,69 @@ $ f(x) = 1/ ((2 pi)^(d/2) product_(i = 1)^d sigma_i) exp (- sum_(i=1)^d 1/2 ((x_
 We use the Mahalobis Distance to calcualate the distance between a point and a cluster:
 $ d(x, underbrace(c, "centroid")) = sum_(i=1)^d ((x_i - c_i)/sigma_i)^2 $
 
+If a point is too distant to all the clusters, we don't want to assign that to any cluster.
+We set a treshold, and if a point is over that treshold for all clusters, we put into the retain set.
+
+Then we try to generate clusters from the retain set (we expect these points to be few, so we can do that using a main memory approach).
+
+But this is somehow counterintuitive, don't have we fixed $k$? Aren't we adding more clusters?
+The algotihm can, in fact, add more clusters.
+
+=== Non-Euclidean: GRGPF
+
+We don't have centroids, but we need to use a clustroid: a real point to represent the cluster.
+
+We use another approach to store a cluster:
+- $n$: the number of points in a the cluster
+- the clustroid $c$
+- the rowsum of the clustroid:
+  $ "rowsum"(x) = sum_(y in C) d(x, y)^2 $
+- the $k$ closest points to $c$
+- the rowsums of the closest points
+- the $k$ farthest points to $c$
+- the rowsums of the farthest points
+
+This algorithms uses a hybrid approach between point assignment and hierarchical approach.
+
+The idea is that when a point gets assigned, we need to change the clustroid, the new clustroid is among the closest points to the old clustroid.
+
+The farthest points are needed to merge clusters.
+
+The algorithm works using a tree.
+It navigates the tree to select in which point assign a point.
+// TODO: explain how the tree is built and what it contains
+
+Then we need to update the representation of the cluster:
+- update the number of points $n+1$
+Then we have two possible situations:
++ if the new point $x^N$ is not the new clustroid and the point is not in the $k$ clostest or farthest poinst
++ if the new point $x^N$ "enters" the representation, so it is the new clustroid or one of the $k$ closest or farthest points
+
+In the first case (easiest one) we just need to update the rowsums.
+We can do that by just summing to the current rowdistances the distance with the new points squared.
+
+The second case is more complex: we need to calculate a new rowsum between each point and the new point, but we don't have all the points.
+
+We can do that in an approximate way:
+$ d^2 (x^N, p) approx d^2 (x^N, c) + d^2 (x, p) $
+$ sum_p d^2 (x^N, p) approx N d^2 (x^N, c) + sum_p d^2 (x, p) $
+
+By checking the distance between the new point and the $k$ closest, we can decide wether to swap or not the clustroid with one of the $k$ closest.
+// TODO: how? why?
+
+Are we sure that the tree is not too big to be store in main memory?
+
+The algorithm also imposes a limit on the diameter of a cluster.
+If it gets too big, we need to recluster it into smaller clusters.
+TO do that the only option is to retrieve all the information of the points and bring it in main memory.
+
+#note[
+  The information on the points must be stored somewhere (not in RAM), otherwise we could not return the final result.
+]
+
+What if we need to merge two clusters?
+$ "rowsum"_(c_1 union c_2) (p) = "rowsum"_(c_1) (p) + N_1 (d^2(p, c_1) + d^2(c_1, c_2)) + "rowsum"(c_2) $
+
 
 //TODO merge jack's notes
 
@@ -110,19 +173,19 @@ In high-dimensional spaces, distances lose their meaning.
 #example[
   If we draw points uniformly in a high-dimensional unit hypercube, the Euclidean distance between any two random points tends to concentrate.
   $ 1 <= d(x, y) <= sqrt(d) $
-  
+
   Operationally, it's worse: *all pairs of points tend to be at nearly the same distance.*
 ]
 
 This implies that finding the "nearest neighbor" becomes meaningless because the nearest and farthest points are almost equidistant.
-*Alternative:* Often **Cosine Distance** (angle between vectors) is more robust in high dimensions:
+*Alternative:* Often *Cosine Distance* (angle between vectors) is more robust in high dimensions:
 $ "dist"(x,y) = (x dot y) / (||x|| dot ||y||) $
 
 == Clustering Strategies
 
 Algorithms generally fall into two classes:
-1.  *Agglomerative:* Start with $N$ clusters (one per point) and merge the closest ones iteratively.
-2.  *Point Assignment:* Iterate through points and assign them to the best existing cluster.
+1. *Agglomerative:* Start with $N$ clusters (one per point) and merge the closest ones iteratively.
+2. *Point Assignment:* Iterate through points and assign them to the best existing cluster.
 
 === Centroids vs Clustroids
 
@@ -130,8 +193,8 @@ How do we represent a cluster?
 
 - *Centroid:* The geometric center (average) of points. Valid in Euclidean space.
 - *Clustroid:* A representative point *selected from the actual data points*.
-    - Used in *Non-Euclidean* spaces (where we can't compute an "average" point).
-    - The clustroid is usually the point that *minimizes the sum of distances* (or max distance) to other points in the cluster.
+  - Used in *Non-Euclidean* spaces (where we can't compute an "average" point).
+  - The clustroid is usually the point that *minimizes the sum of distances* (or max distance) to other points in the cluster.
 
 === Metrics for Selection
 
@@ -153,18 +216,18 @@ It is designed for high-dimensional data and assumes clusters follow a *Multivar
 We cannot load all data into RAM, so we process data in *chunks*.
 For each chunk, we classify points into three sets:
 
-1.  *Discard Set*: Points that clearly belong to a cluster. We update the cluster statistics and *discard* the points themselves to save memory.
-2.  *Compressed Set*: Points that are close to each other but not close to any main cluster. We store them as "mini-clusters" to potentially merge later.
-3.  *Retained Set (RS)*: Outliers or points that don't fit anywhere. We must keep these in memory as individual points.
+1. *Discard Set*: Points that clearly belong to a cluster. We update the cluster statistics and *discard* the points themselves to save memory.
+2. *Compressed Set*: Points that are close to each other but not close to any main cluster. We store them as "mini-clusters" to potentially merge later.
+3. *Retained Set (RS)*: Outliers or points that don't fit anywhere. We must keep these in memory as individual points.
 
 === Summarizing Clusters
 
 To discard points but keep the cluster info, we don't store the points.
 We store only three sufficient statistics:
 
-1.  $N$: The number of items.
-2.  $"SUM"$: Vector sum of all elements (vector of length $d$).
-3.  $"SUMSQ"$: Vector sum of squared components.
+1. $N$: The number of items.
+2. $"SUM"$: Vector sum of all elements (vector of length $d$).
+3. $"SUMSQ"$: Vector sum of squared components.
 
 $ "SUMSQ"_i = sum_(x in "cluster") x_i^2 $
 
