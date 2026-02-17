@@ -34,6 +34,11 @@
 #include "chapters/1-hdfs-mapreduce.typ"
 #include "chapters/2-link-analysis.typ"
 
+
+
+
+#include "chapters/7-regression.typ"
+
 #show: appendix
 #part("Implementation")
 
