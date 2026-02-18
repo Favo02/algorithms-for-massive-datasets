@@ -243,3 +243,94 @@ To decide if a point belongs to a cluster, we don't just use Euclidean distance.
 We use the *Mahalanobis Distance*
 
 If a point is within a threshold distance, it goes to the discard set. Otherwise, it might go to the compressed set or the retained set.
+
+// jacks notes from 17/02 lecture
+
+Why do I have to keep the "promising" clusters if I already have the remaining ones? 
+The core idea here is to *promote mini-clusters*. 
+
+When I cluster items in a non-Euclidean space, I have to reason with *clustroids* (since I cannot compute a mean point).
+
+== GRGPF Algorithm
+
+Each cluster is described using a representation that we have already seen. For a cluster $C$, we store:
+
+- $N$: The number of points.
+- The *clustroid* $c$ + its `rowsum`.
+- The $k$ *closest* points to $c$ + their `rowsum`s.
+- The $k$ *farthest* points from $c$ + their `rowsum`s.
+
+#note[
+  The *rowsum* of any point is the sum of the squared distances between that point and all other points in the cluster:
+  $ "rowsum"(x) = sum_(y in C) d(x, y)^2 $
+]
+
+The algorithm follows a *hybrid approach*: clusters are created dynamically.
+
+1. I find the new clustroid among the $k$ closest points to $c$.
+2. I save the farthest points because in future moments I will have to *merge* clusters, so I need those boundary points to make good decisions.
+
+=== Tree Structure
+
+In the intermediate phase of the execution:
+- The *leaves* will contain the full representation of all the clusters I have encountered so far.
+- The *internal nodes* will contain *samples* of the clusters that appear in their children, alongside a pointer to the child nodes.
+
+The sample is selected appropriately to save space in Main Memory (MM) while using the algorithm.
+
+=== Updating the Representation
+
+Once I have assigned a point to a cluster, I have to modify the representation. But *how do I compute the rowsum of the new points* without access to all previous points?
+
+I use a special property of non-Euclidean spaces (or rather, an approximation).
+If I consider the triangle formed by the new point $x$, the clustroid $c$, and another point $p$, I can see that it will surely be treated like a right-angled triangle.
+
+#informally[
+  We assume the Law of Cosines behaves such that the cross-term is negligible, approximating the Pythagorean theorem:
+  $ d^2(x, p) approx d^2(x, c) + d^2(c, p) $
+]
+
+So, the sum of the squared distances from a point $x$ to all other points (the rowsum) becomes:
+
+$ "rowsum"(x) = sum_p d^2(x, p) approx sum_p (d^2(x, c) + d^2(c, p)) $
+
+Since $d^2(x, c)$ is constant for the summation over $p$:
+
+$ "rowsum"(x) approx N dot d^2(x, c) + "rowsum"(c) $
+
+In principle, all I have to do is: take a new point, travel across the tree, and when I find a leaf, I know which cluster the point belongs to, and I update the representation using this formula.
+
+=== Handling Memory and Constraints
+
+I have *no guarantee* that the tree won't grow too much to store it in memory! Also, a cluster can become a *macro cluster* (too big).
+
+*How to avoid this?* The algorithm imposes a limit on the *radius* of each cluster.
+
+What happens if at a certain point a cluster exceeds the maximum radius? 
+- I have to *split* the cluster.
+- I take the extra points, put them back into MM, and then cluster them into new clusters.
+
+But when I split a cluster in two, I have to update the cluster and update the representation. Do I have enough space?
+In that case, I take the whole leaf, it becomes an *internal node*, and I take two new leaves which become the children of this new internal node.
+
+So I have to have more free memory? *Yes, I need actual RAM space.*
+
+=== Merging Clusters
+
+In some situations (e.g., to reduce the number of clusters or compact the tree), I have to *merge* clusters.
+
+What will be the representation of the merged cluster?
+- I can't just sum the number of points.
+- I will have to select new *closest points* and new *farthest points*.
+
+In order to do that, I cannot compute the raw sum referred to the merged cluster directly. We still use the approximation of the Pythagorean theorem.
+
+If I merge Cluster 1 ($C_1$, clustroid $c_1$) and Cluster 2 ($C_2$, clustroid $c_2$), the new rowsum for a candidate clustroid $x$ (where $x in C_1$) is:
+
+$ "rowsum"_"merged"(x) = sum_(p in C_1) d^2(x, p) + sum_(q in C_2) d^2(x, q) $
+
+The first part is known (it's the old rowsum in $C_1$). The second part is approximated:
+
+$ "rowsum"_"merged"(x) approx "rowsum"_(C_1)(x) + [N_2 dot d^2(x, c_2) + "rowsum"_(C_2)(c_2)] $
+
+This allows me to evaluate the best new clustroid without accessing the raw data.
