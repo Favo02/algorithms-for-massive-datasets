@@ -1,7 +1,7 @@
 #import "../template.typ": *
 
 = Spark
-\
+
 We will not use Hadoop (which offers both a file system and a computing framework with MapReduce), but a more modern version: Spark.
 
 Spark is essentially a workflow system with additional features, such as a more efficient way of coping with failures and grouping tasks among compute nodes. The central data abstraction of Spark is called the Resilient Distributed Dataset (RDD).
