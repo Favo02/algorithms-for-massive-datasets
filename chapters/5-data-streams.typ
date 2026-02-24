@@ -2,190 +2,98 @@
 
 = Data Streams
 
-Compute the average of a data stream:
+Streams are a continuous flow of data and if it is not processed immediately or stored, then it's lost forever. 
 
-The average of $n$ elements is:
-$ x_1, ..., x_n --> overline(x)_n = 1/n sum_(i=1)^n x_i $
+#note[
+  We must assume that data arrives so rapidly that it's impossible to store it in a conventional database to analyze later.
+]
 
-Adding one more element:
-$
-  overline(x)_(n+1) = 1/(n+1) sum_(i=1)^(n+1) x_i = (n dot 1) / (n(n+1)) sum_(i=1)^n x_i + (x_(n+1))/(n+1) = n / (n+1) overline(x)_n + x_(n+1) / (n+1) = (n overline(x)_n + x_(n+1)) / (n+1)
-$
-We do not need to keep all the elements, only the previous average.
+Processing streams involve a *summarization* of the stream data in some way. 
+
+Summarization can be approached by looking at only a fixed length window consisting of the last $n$ elements for some large $n$. Querying the window only when necessary.
+
+== Data Stream Management system
+
+#figure(
+  cetz.canvas({
+    import cetz.draw: *
+    
+    // Input streams (left side)
+    let input-streams = (
+      (name: "Stream 1", y: 2),
+      (name: "Stream 2", y: 0),
+      (name: "Stream 3", y: -2),
+    )
+    
+    for stream in input-streams {
+      line((-4, stream.y), (-2.5, stream.y), mark: (end: ">"), stroke: blue)
+      content((-4.5, stream.y), stream.name, anchor: "east")
+    }
+    
+    // Stream Processor (center)
+    rect((-2, -3), (2, 3), stroke: 2pt + olive, name: "processor")
+    content((0, 3.5), text(weight: "bold")[Stream Processor], anchor: "south")
+    
+    // Standing queries inside processor
+    content((0, 1.5), [Standing Query 1], fill: white)
+    content((0, 0.5), [Standing Query 2], fill: white)
+    content((0, -0.5), [Standing Query 3], fill: white)
+    content((0, -1.5), [$dots.v$])
+    
+    // Output streams (right side)
+    line((2, 1.5), (4, 2), mark: (end: ">"), stroke: maroon)
+    content((4.5, 2), [Query Results], anchor: "west")
+    
+    line((2, 0), (4, 0), mark: (end: ">"), stroke: maroon)
+    content((4.5, 0), [Alerts], anchor: "west")
+    
+    rect((3.5, -2), (6.5, -1), stroke: orange, name: "storage")
+    content((5, -1.5), [Archival Storage])
+    line((2, -1.5), (3.5, -1.5), mark: (end: ">"), stroke: orange)
+  }),
+  caption: [Data Stream Management System]
+)
+
+Stream processor are a kind of data management system where any number of stream can enter the system. Each stream provide elements at its own schedule. 
+
+#note[
+  Streams may be archived in a large storage, but we assume it's not possible to answer queries from the store. We can only examine it's content under special circumstances using time consuming retrival process.
+]
+
+== Querying the Streams
+
+There are two primary ways queries are asked on streams:
+
+1. *Standing Queries*: These queries execute permanently and produce outputs at appropriate times. They rely on the Stream Processor to maintain a state or potentially a fixed window of recent data.
+
+2. *Ad-hoc Queries*: Questions asked once about the current state. Since we cannot store the entire stream history, answering arbitrary ad-hoc queries is impossible without preparation. 
+
+#example[  
+  Compute the average of a data stream:
+
+  The average of $n$ elements is:
+  $ x_1, ..., x_n --> overline(x)_n = 1/n sum_(i=1)^n x_i $
+
+  Adding one more element:
+  $
+    overline(x)_(n+1) = 1/(n+1) sum_(i=1)^(n+1) x_i = (n dot 1) / (n(n+1)) sum_(i=1)^n x_i + (x_(n+1))/(n+1) = n / (n+1) overline(x)_n + x_(n+1) / (n+1) = (n overline(x)_n + x_(n+1)) / (n+1)
+  $
+  We do not need to keep all the elements, only the previous average.
+]
 
 That's a standing query: a query that keeps running indefinetely, even if the data stream is infinite.
 
-Then there are queries that cannot be computed in that "easy" way, we need to think of a specific solution for each one: ad hoc queries.
+=== Issue with Stream Processing
 
-The idea is to apply sampling.
+Data streams often deliver data very rapidly, as said before stream can be processed only if the data stays in the main memory. Thus many problem could be solved if we had enough main memory.
 
-We apply $10%$ sampling.
+We need a way to overcome hardware limitation involving new techniques.
 
-- whole stream: $s$ "simple" queries $+$ $d$ double queries $ = d / (d+s) $
-- sampling: $s/10$ original simple queries $+ d/100$ originally occourring twice $+ 1/10 9/10 + 9/10 1/10$ originally double queries occurring once $ = d / (10s +19d) $
-
-#note[
-  Of the double queries, some could be sampled only the first one, some only the second one, so the sampled version is $1/100$ ($\/10$ for the first sampling, $\/10$ for the second sampling).
-
-  Same if only one of the two gets sampled.
-]
-
-We are off by one order of magnitude using sampling.
-
-Because of issues like synchronization and programmatically sampling (not good), sampling can be bad.
-The bullet-proof way of sampling is pseudo random numbers.
-For each element, extract the number and if the random number is $<0.1$ then take, otherwise do not take.
-
-Another approach: instead of sampling queries, we sample users.
-When a new element arrives, we check wheter or not the user have been sampled.
-The disadvantage is the necessity of space for storing the users.
-
-Instead of pseudo random generation, we use hash functions!
-Given an hash function with $10$ buckets, keep elements of only users being hashed to the first bucket.
-
-But even with that sampling, we could run out of memory for the queries of sampled users.
-When this happens, the idea is to sample at a smaller fraction.
-
-The sampling is hot-swappable: we can change ratio by swapping the hash function.
-But the already stored elements are still in memory.
-
-We store everything in a vector in memory.
-#todo // TODO
-treshold and moving the treshold
-
-== Filtering (Set Membership)
-
-- universe $U$
-- $S subset.eq U$ (keys)
-- $x in S$?
-
-Each time we get a query, we need to search a data structure and check if we find the element $x$, if we find it, return yes.
-
-An array would do the trick, but for example a search tree works better (log complexity).
-
-=== Approximate Set Membership: Bloom Filter
-
-We accept FP (but in a controlled number), we do not want FN.
-
-A bloom filter consists of a bitmap (bit vector $b$) combined with an hash function.
-
-Initially all the bits of the bitmap are initialized to $0$.
-Then we consider each key $k$, set to $1$ the bucket obtained by hashing the key $k$ by a function $h$.
+The idea is to apply *sampling*.
 
 #note[
-  With that approach, we can even add new keys on the way.
+  In statistic sampling is the selection of a _subset_ of individuals within a population to esitmate charateristics of the whole population.
 ]
-
-Each time a query $x in U$ arrives, we check wheter the bit array of the hashed element is equal to $1$.
-If it is $1$ then it *could* be in the set of keys, otherwise it is surely not part of the set.
-
-We are 100% sure that an element part of the keys "passes" the bloom filter, but we are not sure that an element not part of the keys gets rejected.
-
-$ PP("pick one element") = 1/m $
-$ PP("one element is not picked") = 1 - 1/m = (m-1)/m $
-$
-  PP("one element is not picked during filter building") & = ((m-1)/m)^n \
-                                                         & = (1 - 1/m)^n \
-                                                         & = (1 - 1/m)^(m n/m) \
-                                                         & = ((1 - 1/m)^m)^(n/m) \
-                                                         & = ((1 - 1/m)^m)^(n/m) \
-                                                         & =_(m->infinity) e^(-n/m)
-$
-
-$ PP("one element picked at least one") = 1 - e^(-n/m) = underbrace("FPR", "False Positive Rate") $
-
-#example[
-  With the previous example, we have a $1/8$ FP rate.
-]
-
-We want to be able to control rate.
-We have no control over $n$, but we can control $m$: the amount of RAM space that we can devote to the filter.
-
-Another control we have over that: we can use multiple hash functions.
-Each element gets hashed by multiple hash functions, so it can turn on multiple places of the array.
-
-We denote with $p$ the number of hash functions.
-$ "FPR" = (1-e^((-k n)/m))^k $
-
-== Counting Distinct Elements
-
-Flajolet Martin
-
-We rely (again) on hash functions.
-Hashing an element, gives us a binary number.
-
-We are interested on the rail length of the number, the number of trailing zeros.
-
-Foreach element in the stream $x$, hash it, compute the tail length.
-Keep track of the maximum tail length.
-Return $2^"max"$.
-
-$ PP("last" r "bits ot the bucket are" 0) = 1 / (2^r) = 2^(-r) $
-
-$ PP("none among" m "distinc elements is mapped to a bucket with" r "trailing zeros") = (1 - 2^(-r))^m $
-
-$
-  1 - (1/2^r)^m & = (1 - 1/2^r)^(m 2^r 2^(-r)) \
-                & = ((1 - 1/2^r)^(2^r))^(m 2^(-r)) \
-                & approx e^(-m 2^(-r))
-$
-
-- $ m >> 2^r --> m 2^(-r) approx "big" --> p -> 0 $
-- $ m << 2^r --> m 2^(-r) approx 0 --> p -> 1 $
-
-Because we dont want to be in neither of that cases, we select $m$ as:
-$ m approx 2^(-underbrace(R, "max tail length")) $
-
-#warning[
-  This method is extremely sensitive to outliers.
-]
-
-To solve that problem, we use multiple counters and hash multiple hash functions.
-Then we compute the median (not affected by outliers) of the results of each hash function.
-
-But the median has other problems: it must be one of the results, so it is a power of $2$.
-We could have not enough granularity.
-
-The average could be another idea but it is affected by outliers.
-So the solutions is to use both things, an average of the medians.
-
-== Moments
-
-The $r$-th moment is computed: $ sum_i m_i^r $
-
-- $r = 0 --> sum_i m_i^0 = sum_"elements occurring in stream" 1 =$ number of distinct elements
-- $r = 1 --> sum_i m_i =$ stream length
-- $r = 2 --> sum_i m_i^2 =$ surprise number
-
-...
-
-=== Alon-Matias-Szegedy Algorithm (AMS)
-
-Works by sampling the stream.
-
-
-// jack's note, 10/02/2026
-
-= Data Streams
-
-We speak of *data streams* when the data we want to analyze is not provided in a complete batch. Instead, data arrives in a continuous, temporal sequence.
-
-*The main problem with streams:*
-
-They are never-ending. We cannot store everything in memory.
-
-To query them, we often use *standing queries* (never-stopping queries) instead of traditional ad hoc queries.
-
-#example[
-  *Tsunami Sensor:* \
-  Imagine measuring the water level in the sea to prevent tsunamis. 
-  - If a single sensor outputs 4 bytes, 10 times per second, it produces roughly 3.5 MB a day.
-  - If we have 1 million sensors, that's 3.5 TB per day. We cannot store this indefinitely; we must process it on the fly.
-]
-
-== Ad Hoc Queries & Sampling
-
-Sometimes we need to run specific queries on streams, which requires sampling.
 
 #example[
   Let's suppose we take a *10% sample* of our stream.
@@ -209,7 +117,7 @@ Hash the User ID into one of $B$ buckets.
 If we want a 10% sample, and we have 100 buckets, we accept the user if their hash falls into buckets $0$ through $9$. 
 - This is *hot-swappable*: If we run out of memory, we can dynamically lower the threshold (only accept buckets $0$ through $4$) to reduce the sample to 5%, democratically "killing" elements to free up RAM.
 
-== Filtering (Set Membership)
+== Filtering Streams (Set Membership)
 
 Given a universe of items and a trusted subset $S$, we want to answer: *Is $x in S$?*
 
@@ -384,7 +292,7 @@ Working from right to left (end of stream to start), the values of $r$ for `a` w
 So for each distinct item $i$, the contribution to the total sum is:
 $ sum_(j=1)^(m_i) (2j - 1) $
 
-#theorem("Sum of Odd Numbers")[
+#theorem(title: "Sum of Odd Numbers")[
   The sum of the first $k$ odd numbers is equal to $k^2$.
   $ sum_(j=1)^k (2j - 1) = k^2 $
 ]
