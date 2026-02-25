@@ -275,18 +275,39 @@ Therefore, my loss function in matrix notation is:
 
 $ w^* = "argmin"_w ||X w - y||^2 $
 
-How do I find the minimum? I need to take the derivative and set it to zero.
-*What is the derivative of a vector expression?*
+How do I find the minimum? I need to take the derivative and set it to zero. But *what is the derivative of a vector?*
 
-The partial derivative is nothing but what I obtain by fixing a constant and treating the rest as a variable I can derive.
+First, let's recall the concept of *partial derivative*. It is nothing but what I obtain by fixing a constant and treating the rest as a variable I can derive.
 
-#informally[
-  Recall that for a scalar function, the derivative of $(a x - y)^2$ is $2a(a x - y)$.
-  In matrix calculus, the gradient of $||X w - y||^2$ follows a similar pattern involving the transpose.
+#example[
+  If I have a function $f(x, y) = sin(x + y) dot x$, the partial derivative with respect to $x$ is:
+  $ (partial f) / (partial x) = x dot cos(x + y) + sin(x + y) $
+  *(Treating $y$ as a constant)*.
 ]
 
-The gradient of the loss function is:
-$ nabla_w ||X w - y||^2 = 2 X^T (X w - y) $
+When we move to vectors, the closest concept to the derivative is the *Jacobian Matrix* ($J$).
+The Jacobian is the matrix of all first-order partial derivatives of a vector-valued function.
+
+If $f(x)$ outputs a vector, then the Jacobian $J$ is the matrix where $J_(i j) = (partial f_i)/(partial x_j)$.
+
+#note[
+   In my raw notes, I compared this to a "second derivative".
+   To be precise:
+   - *Gradient* ($nabla$): First derivative of a scalar function (outputs a vector).
+   - *Jacobian* ($J$): First derivative of a vector function (outputs a matrix).
+]
+
+In our specific case, we are interested in the term $X w$. Since this is a linear transformation, its derivative (the Jacobian) is constant, just like the derivative of $a x$ is $a$.
+
+$ J_w (X w) = X $
+
+Now, applying the Chain Rule to our loss function $|| X w - y ||^2$:
+
+$ nabla_w ||X w - y||^2 = 2(X w - y)^T dot J(X w - y) $
+
+Substituting the Jacobian we found:
+
+$ nabla_w l(w) = 2 (X w - y)^T X = 2 X^T (X w - y) $
 
 To find the minimum, I set the gradient to 0:
 
