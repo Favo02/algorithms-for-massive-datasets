@@ -372,3 +372,153 @@ Summing $n$ matrices? This sounds like a job for my dear friend *MapReduce*.
 - *Reduce*: Sums up all the $d times d$ matrices to get the final $X^T X$.
 
 Once I have $X^T X$ (which is small, $d times d$), I can invert it locally in MM and solve the regression.
+
+
+//jack's notes from 24/02/2026
+
+=== both $n$ and $d$ grow
+
+Remember that $n$ (or $m$) is the number of examples and $d$ is the number of dimensions/features.
+We saw that finding the exact mathematical solution for Linear Regression has a time complexity of $O(n d^2 + d^3)$ and a space complexity of $O(n d + d^2)$. 
+
+But what happens when *both* dimensions grow? 
+We simply cannot compute or invert the matrix $X^T X$.
+We need to change our approach: we still want to minimize the loss function, because the better our weights $w$, the lower the sum of errors.
+We just need to find this minimum iteratively instead of analytically.
+
+#informally()[
+  We use *Gradient Descent*.
+  The gradient of a differentiable function points in the direction of the steepest ascent.
+  To find a local minimum, we take iterative steps in the opposite direction of the gradient of the loss function with respect to the parameters.
+]
+
+The update rule is:
+
+$ w_(i+1) = w_i - alpha nabla ell(w_i) $
+
+If the algorithm reaches the optimum, the derivative there is $0$, resulting in $w_(i+1) = w_i - 0$.
+The parameters stop updating, meaning the algorithm has successfully converged to the minimum.
+
+#warning()[
+  Gradient descent is a *local* optimization algorithm.
+  It moves in the direction of steepest descent towards a local minimum.
+  
+  To control the size of the steps we take, we scale the gradient by a constant parameter: the *learning rate* ($alpha$).
+
+  - If $alpha$ is *too large*, the updates will overshoot the minimum, causing the loss to diverge.
+  - If $alpha$ is *too small*, the convergence will be exceedingly slow or get stuck in suboptimal regions.
+]
+
+Using a fixed learning rate is often inefficient.
+It is standard practice to adjust it dynamically: larger steps at the beginning of the optimization when we are far from the minimum, and progressively smaller steps as we approach convergence. 
+A common time-dependent decay strategy for the learning rate is:
+$ alpha_i = alpha_0 / sqrt(i) $
+
+Let's compute the gradient mathematically for a single weight component $w_k$.
+The loss function is $ell(w) = sum_(j=1)^m (w dot x^((j)) - y^((j)))^2$.
+
+Taking the derivative with respect to $w_k$:
+$ (partial ell) / (partial w_k) = sum_(j = 1)^m 2(w dot x^((j)) - y^((j))) dot (partial) / (partial w_k) (w dot x^((j))) $
+
+Notice that $w dot x^((j)) = sum_{i=1}^d w_i x_i^((j))$.
+If we differentiate this sum with respect to $w_k$, all terms become zero except the $k$-th term, leaving just $x_k^((j))$.
+$ (partial) / (partial w_k) (w dot x^((j))) = x_k^((j)) $
+
+So our gradient for the $k$-th component is:
+$ (partial ell) / (partial w_k) = sum_(j = 1)^m 2(w dot x^((j)) - y^((j))) x_k^((j)) $
+
+#note[
+$2(w dot x^((j)) - y^((j)))$ is a scalar multiplier for the feature value)
+]
+
+*The Algorithm:*
+
+```pseudocode
+fix w_0 (random initialization)
+set alpha
+i = 0
+while not stop_condition:
+    w_{i+1} = w_i - alpha * sum( 2 * (w_i * x^{(j)} - y^{(j)}) * x^{(j)} )
+    i += 1
+```
+Thanks to this iterative approach, computing the gradient step at the local level (for a single data point) drops the complexities drastically to:
+
+- Time Complexity: O(d)
+
+- Space Complexity: O(d)
+
+== Logistic Regression
+
+We still have our data organized in (x,y) pairs, but unlike standard regression where labels are continuous, we are now dealing with Classification.
+This means our labels are discrete. 
+Specifically, we assume binary labels:
+
+$ y^((j)) in {-1, 1} $
+
+Our model learns a weight vector `w`.
+The dot product wdotx yields a scalar that can be positive, negative, or 0.
+Geometrically, $w dot x=0$ defines a hyperplane that partitions the feature space into two half-spaces.
+
+If the dataset is linearly separable (e.g., all +1 points lie on one side of the hyperplane and all −1 points on the other), we can classify new observations by checking the sign of the dot product:
+
+$ hat(y) = "sign"(w dot x) $
+
+=== The 0-1 Loss Function
+
+The most intuitive error metric for classification is the 0-1 Loss.
+To formalize this, we evaluate the product between the true label and the prediction score, denoted as `z`:
+
+$ z = y^((j)) (w dot x^((j))) $
+
+Let's analyze the properties of z:
+
+- If the classifier makes no error (True Positive or True Negative): the true label and the prediction have the same sign. Their product is strictly positive (z>0).
+
+- If the classifier makes an error (False Positive or False Negative): the signs differ, resulting in a negative product (z < 0).
+
+Therefore, the 0-1 loss for a single observation is defined as:
+
+$ ell_(0/1)(z) = cases(1 "if" z < 0, 0 "if" z > 0) $
+
+We aim to minimize the macro loss function over the entire dataset:
+$ L = sum_(j=1)^m ell_(0/1) (y^((j)) (w dot x^((j)))) $
+A perfect classifier yields L=0.
+The value of this macro loss function directly represents the total count of misclassified examples.
+
+=== The Log Loss Function
+
+Can we use Gradient Descent to minimize the 0-1 loss? No.
+The 0-1 loss is a step function: it is discontinuous at 0 and its derivative is exactly zero everywhere else.
+Gradient Descent requires a non-zero gradient to update the weights.
+
+To solve this, we replace the 0-1 loss with a continuous, convex function called the *Log Loss*:
+
+$ ell_"log"(z) = ln(1 + e^(-z)) $
+
+We aim to minimize this differentiable function using Gradient Descent.
+Let's compute its derivative using the chain rule:
+
+$ ell'"log"(z) = d/(d z) ln(1 + e^(-z)) $
+$ ell'"log"(z) = 1 / (1 + e^(-z)) dot (-e^(-z)) = (-e^(-z)) / (1 + e^(-z)) $
+
+#note[
+We can algebraically manipulate this fraction into a more convenient form for later steps:
+$ (-e^(-z)) / (1 + e^(-z)) = (1 - (1 + e^(-z))) / (1 + e^(-z)) = 1 / (1 + e^(-z)) - 1 = -(1 - 1 / (1 + e^(-z))) $
+]
+
+Next, we compute the partial derivative of the loss with respect to the weight component w_k.
+Recall that z=y((j))(wdotx((j))). The partial derivative of z with respect to w_k is y((j))xk((j)).
+
+Applying the chain rule:
+$ (partial ell) / (partial w_k) = sum_(j=1)^n -(1 - 1 / (1 + e^(y^((j)) w dot x^((j))))) y^((j)) x_k^((j)) $
+
+This gives us the full gradient vector:
+$ nabla ell(w) = sum_(j=1)^n -(1 - 1 / (1 + e^(- y^((j)) w dot x^((j))))) y^((j)) x^((j)) $
+
+Because this gradient is smooth and well-defined, we can now safely optimize Logistic Regression using the Gradient Descent algorithm.
+
+#note[
+Probabilistic Interpretation:
+Beyond strictly predicting a class, Logistic Regression allows us to output class probabilities. We can model the label as a random variable Y and formalize the conditional probability P(Y=+−1∣X=x).
+]
+
