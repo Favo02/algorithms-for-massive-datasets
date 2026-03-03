@@ -42,6 +42,13 @@
 #include "chapters/1-hdfs-mapreduce.typ"
 #include "chapters/2-link-analysis.typ"
 
+
+
+
+
+
+#include "chapters/9-deep-learning.typ"
+
 #show: part.with("Implementation", chapters-numbering: "A.1.", reset-chapters: true)
 
 #include "chapters/a-spark.typ"
