@@ -108,3 +108,124 @@ Each of these layers is called a convolutional network.
 Sooner of later, we need to linearize things. // TODO: why?
 - we can add a layer with no weight that just moves from a 3d neurons into a linear layer
 - each convolutional layer can be converted into a single output, the amount of that feature in the original input
+
+// TODO: end of convulutional
+
+== Recurrent Neural Network
+
+Autoregressive.
+
+We take $x$ characters as input, and put $x-1$ of these as output.
+We are interested in the last one that gets generated.
+Then we move all and generate the next character and so forth.
+
+We add an output layer to have a probability distribution on each possible character and not a crisp output.
+So that we get the probability of prediction of each character for the next one.
+If we always pick the character with the highest probability, we get a deterministic generation.
+Or we can simulate an extraction based on the probabilities.
+Usually some mechanism that mix these two approach are used, both probabilistic but not on all the characters.
+
+Recurrent NN are history.
+In the last 10 years, transformers and LLM are the new form of deep learning and are much more efficient.
+
+== transformer
+
+A trasnformer is an highly structured Neural network.
+It is not complex (uses all things we already saw), but is complicated (there are a lot of them in a complex structure).
+
+A big advantage is that they can be trained on parallel hardware, GPU.
+But they are very very big, the training is very very expensive.
+
+HuggingFace: repository of pre-trained neural networks (and transformers).
+
+Take a pre-trained model and fine-tune it: adapt the structure of the model to a specific context and retrain only a small part of the parameters of the model.
+
+We will use an autorecurrent approach.
+We start with the input and an output string as output.
+
+IN the same way as before, we take the generated token and append to the output.
+We don't have a sliding window, the input always stays there and the output icnreases step by step (and never decreases).
+
+- Tokenization: divide the input in tokens
+- Vectorization: transform each token in a number so that it can be processed by the model
+
+The main problem of RNN is that they have a short memory (because of the sliding window thing).
+To overcome this problem, the attention mechanism is introduced.
+
+Exists multiple architectures of transformers, some with only decoder, some with only encoder and some with both.
+
+=== Embeddings
+
+Take a string length $n$ from an alphabet and trasform it into a matrix $n times d$.
+Each character is trasformed in a vector, so the string is a matrix.
+$d$ is typically 512, this will be important for the whole process.
+
+Not only encode a word in a vector, but also similarity as proximity.
+
+=== Positional Encoding
+
+Because of the next steps are independent of order, we need to inject manually order so that it will be understood.
+So we add like a progressive sequence to each embedding.
+
+=== Encoding
+
+Multiple encoding blocks.
+Learning meaningful representation of the data.
+
+- MHSA: learning dependencies between the tokens (even dependencies from far tokens)
+- Normalization
+- Feed Forward Neural Network (FFNN)
+- Normalization
+
+Other than that, some rediduals connections (that skips some blocks) are added.
+This is useful to counteract vanishing and exploding gradients.
+
+=== Self Attention mechanism
+
+Dealing with long term context and disambiguation.
+
+The idea is to move the vectors of something, based on the context we are in.
+
+E.g. the embedding of Apple can be close to organe or bananas, but also close the google or microsoft.
+Based on the current context, we move the embedding closer to one or to the other (fruits or tech).
+
+To do that, we compute the similarity between all pairs of words in the sentence. // TODO: ???
+
+Usually, similarity is well caught by inner products, but there are some problems:
+- product tend to increase a lot with the dimension of the embedding, so we normalize
+- product can be negative, so we apply softmax
+
+$ X^"att" = "softmax"((X X^T)/sqrt(d)) dot X $
+
+=== MUlti-head self attention
+
+But the same word could have multiple meanings "I was eating an apple at the apple store".
+
+The idea is to use multiple embeddings and calculate attention for all of these.
+That poses multiple problems:
+- good embeddings are difficult to find
+- big dimensionality
+
+To fix that problem, we keep only one real embedding and then applying linear transformations.
+This "moves" around the points of the space, so that the points are closer in similar ways.
+
+We apply attention to the embedding with different linear transformations.
+The output of all attentions is concatenated.
+The size of each one is smaller so that the concatenation gives back to the dimension $d$.
+
+=== Masked attention
+
+Because the output is not full, we place empty string.
+But that must be encoded into a valid vector, and computing the attention for that vector gives gibberish (the attention is computer for the whole output).
+
+So, we mask that by placing $-infinity$ where the output token is not yet generated.
+
+=== Training
+
+These are trained using back-propagation, like NN.
+
+All the parameters that can be decided are trained (the linear transformation, the neurons, ...).
+
+These can be trained using self-supervising techniques.
+The web is full of text sequences (like wikipedia articles).
+The first part of the sequence is fed and the continuation is the part that needs to be generated.
