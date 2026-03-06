@@ -74,11 +74,11 @@ In general $k = 5$ for email and $k = 9$ for larger documents are considered saf
 === Storing Shingles
 
 Storing each $k$-gram explicitly as a string requires $k$ bytes per shingle.
-Instead, we could *hash* the shingle an store only the integer representing the bucket.
+Instead, we could *hash* the shingle and store only the integer representing the bucket.
 $ h("shingle") -> 32 "bits" $
 
 #note[
-  While this introduces some collisions, meaning two different shingles will be considered the same one, it works really well beacuse _most_ of the possible shingles _never occour_.
+  While this introduces some collisions, meaning two different shingles will be considered the same one, it works really well beacuse _most_ of the possible shingles _never occour_ (such as "kxsdw" string).
 ]
 
 #example[
@@ -86,7 +86,7 @@ $ h("shingle") -> 32 "bits" $
   This matches the space needed for _unhashed_ $4$-shingles, yet hashing $9$-shingles provides *better differentiation* quality: while $4$-shingles account also for very *rare* shingles, hashed $9$-shingles *uniformly distribute* rare shingles across buckets, improving effectiveness.
 ]
 
-=== Storing Documents: Charateristic Matrix
+=== Charateristic Matrix
 
 We can store documents using a binary matrix called the _characteristic matrix_:
 - each row represents a *shingle* (identified by its hash bucket, a natural integer)
@@ -133,7 +133,7 @@ To calculate the Jaccard similarity between two documents, we need to calculate:
 This idea works, but the charateristic matrix is *too big* to fit in memory.
 We need to _compress_ this matrix, being able to compute the similarity without decompressing it.
 
-=== Storing Documents: Min Hash Function
+=== Min Hash Function
 
 We introduce a function that hashes a *document* into a *shingle*.
 $ h : {"docs"} -> {"shingles"} $
@@ -141,7 +141,7 @@ $ h : {"docs"} -> {"shingles"} $
 To calculate a Min Hash Function three steps are done:
 + Fix a _row permutation_ (of the shingles) of the charateristic matrix
 + _Apply_ the permutation to the charateristic matrix
-+ For each document, the resulting shingle is the row with the first $1$ in the permuted column
++ For each document, the resulting shingle is the _row with the first $1$_ in the permuted column
 
 #example[
   An hash function $h_1$ with the documents from the last example:
@@ -199,7 +199,7 @@ The idea is to store *several* different hash functions instead of the whole mat
 
 We could have one hash function for each permutation of the shingles (rows), so there exists $n!$ possible hash functions.
 
-=== Storing Documents: Signature Matrix
+=== Signature Matrix
 
 Storing _several_ hash functions is much _smaller_ than storing the entire characteristic matrix.
 A *signature matrix* stores exactly this: the results of applying multiple hash functions to each document.
@@ -219,75 +219,69 @@ A *signature matrix* stores exactly this: the results of applying multiple hash 
   $
 ]
 
-#todo
-
-We will not be able to restore the whole matrix, we get an approximation.
-The more rows of the signature matrix, the more accurate.
-We can random sample the permutations to obtain a decent result.
-
-But how many functions?
-
-How do we extract random evenly distributed permutations?
-We use another random function $p$.
-Having $n$ shingles, $p$:
-$ p : {0, ..., n-1} -> {0, ..., n-1} $
-If $p$ is a perfect hash, then each bucket will be selected exactly by one shingle.
-Reading the buckets in order, we can retrieve the shingle that pointed to that bucket.
-That will result in a permutation.
-
-This can be done efficiently using expressons like, selecting random values:
-$ p(x) = 4x + 7 mod n $
-
-#note[
-  But after selecting the permutation, how can we browse the column and obtain the first one of that column?
-  The matrix is too big!
-  We can do that with some local queries (more on the book).
+#warning[
+  This representation is an _approximation_, the whole characteristic matrix cannot be restored.
+  The more hash functions used (rows of the signature matrix), the more accurate the approximation is.
 ]
 
-We can use this signature matrix to calcualte the Jaccard similarity.
+The number of hash functions $n$ is a tradeoff: more functions give a better approximation of $J$ but cost more space and time.
+Values in the range of 100-500 are typical in practice.
 
-We pick two docuiments $S$ and $T$ and we get the shingle returned by applying a random hash function $H$.
-We can compare the result and check whether are equal and calculate the probability.
-This can be proven that it is exactly the Jaccard similarity:
+Instead, each permutation is _simulated_ by a random hash function on row numbers.
+A simple and effective family is:
+$ h(x) = (a x + b) mod p $
+where $p$ is a prime number and $a, b$ are chosen randomly.
+Such a function acts as a pseudo-random permutation of ${0, ..., p-1}$.
+
+The characteristic matrix is _sparse_: documents contain only a small fraction of all possible shingles, so most entries are $0$.
+Computing the signature matrix then only requires a single pass over it:
+
++ Initialize $"SIG"(i, c) = infinity$ for all hash functions $i$ and documents $c$.
++ For each row $r$ of the characteristic matrix:
+  + Compute $h_i(r)$ for every hash function $i$: the hash of the _row index_ $r$ (a single integer), simulating where row $r$ would land under the $i$-th permutation.
+  + For each document $c$ that has a $1$ in row $r$, update: $"SIG"(i, c) = min("SIG"(i, c), h_i(r))$.
+
+At the end, $"SIG"(i, c)$ equals the minimum $h_i(r)$ over all rows where document $c$ has a $1$.
+This is exactly the min hash value.
+
+=== Signature Matrix and Jaccard Similarity
+
+Given a signature matrix, we can estimate the Jaccard similarity between two documents without accessing the full characteristic matrix.
+
+The key insight is that if we apply a _random_ hash function $H$ to two documents $S$ and $T$, the probability that they produce the same result equals the Jaccard similarity:
 $ PP(H(S) = H(T)) = J(S, T) $
 
 #warning[
-  $H$ is NOT a fixed hash function (with its signature matrix), but a random function (the equivalent of an aleatoric variable).
-  $H$ is ALL possible hash functions.
-
-  For each permutation, we have an hash function.
-  $ P_1 -> h_1 quad quad h_1(S) = h_1(T) $
-  $ P_1 -> h_1 quad quad h_1(S) = h_1(T) $
-  $ P_1 -> h_1 quad quad h_1(S) = h_1(T) $
+  $H$ represents a _random_ hash function chosen uniformly from the set of all possible permutations, not a fixed function (the equivalent of an _aleatoric_ variable for functions).
+  Each row of the signature matrix corresponds to one such random function.
 ]
 
 #proof[
-  Fixed an hash function (a specific realization of random function $Z$), four possible situations exists:
+  Considering a specific hash function, for each row of the characteristic matrix, four cases exist:
   $
     mat(
-      S, T, ;
-      0, 0, quad "Z type rows";
-      0, 1, quad "Y type rows";
-      1, 0, quad "Y type rows";
-      1, 1, quad "X type rows";
+      S, T;
+      0, 0, quad "Z-type";
+      0, 1, quad "Y-type";
+      1, 0, quad "Y-type";
+      1, 1, quad "X-type";
     )
   $
 
-  The equality is possible only if the first non-Z type row is an X type row:
-  $ PP(H(S) = H(T)) = J(S, T) = PP("first non-Z type row is an X-type row") $
+  The hash values $H(S)$ and $H(T)$ are equal if and only if the _first non-Z row_ is an _X-type row_.
 
-  Using basic probabilities (fav cases over total cases):
-  $ = "X-type rows" / "non Z-type rows" = x / (x+y) $
+  Computing the probabilities:
+  $ PP(H(S) = H(T)) = "X-type rows" / "non-Z rows" = x / (x + y) $
 
-  Because we can calculate the size of the union counting the number of rows with at least one $1$ and the intersection the number of rows with both $1$, the we can rewrite the Jaccard similarity as:
-  $ x / (x+y) $
-
-  Meaning the two things are equal $qed$.
+  By definition, the Jaccard similarity is the intersection (both $1$s) over the union (at least one $1$):
+  $ J(S, T) = (|S inter T|) / (|S union T|) = x / (x + y) space qed $
 ]
 
-Given a signature matrix, we can estimate the similarity considering ??? over the total number of rows.
+To estimate similarity from a signature matrix with $n$ rows, count how many rows produce equal hash values:
+$ hat(J)(S, T) = "# matching rows" / n $
 
 #example[
+  For documents $S$, $T$, and $U$ with signature matrix:
   $
     mat(
       , S, T, U;
@@ -296,121 +290,301 @@ Given a signature matrix, we can estimate the similarity considering ??? over th
       h_3, 4, 4, 8;
     )
   $
-  $ hat(J)(S,T) = 2/3 $
-  $ hat(J)(S,U) = 1/3 $
+
+  Similarities:
+  $ hat(J)(S,T) = 2/3 approx 0.67 quad (h_1, h_3 "match") $
+  $ hat(J)(S,U) = 1/3 approx 0.33 quad (h_1 "matches") $
 ]
 
-We solved the space problem, but we still have to handle the computational time.
+The signature matrix solves the _space_ problem, but comparing all pairs is still quadratic in time: every couple of documents needs to be compared
+$ binom(m, 2) approx m^2/2 "comparisons" $
 
-We need to compute the similarity for each pair of documents.
-With $m$ documents, we need to perform $(m(m-1))/2$ or $binom(n, 2)$ comparisons $approx 1/2 m^2$.
-
-If we have $10^6$ documents and we have $250$ min hash functions (rows of the signature matrix), it the end we approximately need $1$ GB to store the signature matrix (OK).
-
-Time complexity would be: $1/2 10^12$.
-Considering each comparison taking $10mu s$ (which is far beyond current tech limit), we will end up with $1/2 10^12 10^-6 s approx 5 dot 10^5$ seconds, around 6 days (NOT OK).
-
-#note[
-  Even that approach, computes only an approximation of the similarity ($hat(J)$).
+#example[
+  With $m = 10^6$ documents and $n = 250$ hash functions, the signature matrix takes roughly $1$ GB of memory, completely manageable.
+  The time cost, however, is around $5 times 10^11$ comparisons: even at $1 mu s$ per comparison (far beyond current hardware), that amounts to roughly 6 days.
 ]
-
-Instead of doing a bruteforce full search, the idea is to filter only some probable similar pairs, not all one.
-
-== Locality Sensitive Hashing (LSH)
-
-#informally[
-  Starting from a view on the overall set of documents, dividing it into several subviews
-]
-
-We the signature matrix with $n$ documents ($D_1, ..., D_n$) and $k$ hashing functions.
-
-We will divide that matrix into $b$ *bands*, each containing $r$ rows (with $b r = k$).
-
-For each band, each document will be sent to a bucket.
-This bucket is identified by the values of the shangles of that part of the band.
-
-Each document will be sent to $b$ buckets (one for each band).
-The idea is to associate multiple documents to the same bucket, thanks to the buckets.
-
-The Jaccard similarity will be run only on all the pairs of documents that end up in the same bucket.
-
-To end up in the same bucket, each document will match at least in one band.
-How much is that probable?
-$ PP(S "and" T "match in at least one band") $
-
-We can build up that, starting from:
-$ PP(S "and" T "match in one row") = s = J(S, T) $
-
-#note[
-  We can assume independecy between events (rows) because we use random sampling (the parameters of the linear transformation should be selected randomly).
-
-]
-
-Because of that independence we can compute:
-$ PP(S "and" T "match in all row of a band") = s^r $
-
-$ underbrace(PP(S "and" T "match in not not match in at least one row"), = "do not match in one band") = 1 - s^r $
-
-$ PP(S "and" T "match in not not match in all bands") = (1 - s^r)^b $
-
-$ underbrace(PP(S "and" T "match in at least one band"), = S "and" T "are not filtered") = 1 - (1 - s^r)^b = p(s) $
-
-The pairs that does not get filtered will continue the process into finding similar pairs.
 
 #warning[
-  This is an approximation algorithm, it returns an approximate solution:
-  - False Positive (FP): a pair that passes the LSH filter but is not similar
-  - False Negative (FN): similar documents that does not pass LSH
-
-  False Positives are not a big problem, the pairs that passes the filter are then processed anyway, we their similarity will be calculated in any case.
+  The signature matrix gives only an _approximation_ of the Jaccard similarity, results are not exact.
 ]
 
-We need to fix a *treshold* over which the pairs are similar and below that are discarded.
-We can leverage the shape of the function $p$ to change this treshold.
+The solution is to avoid comparing _all_ pairs, and instead focus only on pairs that are _likely_ to be similar.
 
-The $p$ function has a sigmoid like shape between $0$ and $1$ with $s$ on the $x$ axis.
-A sigmoid is a continous relaxation of a treshold.
-On that function we could fix a treshold $t$ in an analytic way.
-
-A sigmoid starts with a flat function, then it starts increasing with a certain rate, until it stops increasing and stops increasing.
-To fint a decent treshold, we can compute the first derivative and find the steepest point of the function (where it changes steepness) and use that as treshold $t$.
-
-$ ... $
-
-Plotting out the first derivative we get a bell.
-To find the maximum of that we calculate the second derivative and nullify it.
-$
-  (r-1) s^(r-2) (1-s^r) = (b-1) r s^(2r ) \
-  (r-1)/r = (s^r)/(1-s^r) (b-1)
-$
-
-The root of that are very complex, we consider an approximation.
-$ s^* = (1/b)^(1/r) $
-
-$ (r-1)/r = (1/b)/(1-(1/b)) (b-1) $
-
-So we can fix a similarity treshold $t$ (the maximul of the first derivative):
-$ t = (1/b)^(1/r) $
-
-We need to fix the parameters of LSH $b$ and $r$ so that the treshold is equal to $t$ (keeping the constrait that $b r = n$)
+=== Locality Sensitive Hashing (LSH)
 
 #informally[
-  Recap:
-  - we start from documents
-  - preprocess: whatever (we strip out stop words, ...)
-  - we decide the shingles
-  - based on that we decide $k$ for $k$-grams
-  - we create the signature matrix, choosing $n$ (the number of hash functions or rows of the matrix)
-  - we decide the parameters $b$ and $r$ so that we have the best treshold $t$
-  - we apply LSH with $b$ adn $r$
-  - some documents will pass LSH (with treshold $t$), some not
-  - compute the similarity of documents that passed LSH
+  The signature matrix is divided into _bands_.
+  If two documents share the _same values_ in at least one band, they are likely to be similar.
+
+  To achieve that efficiently, _hashing_ is used.
 ]
 
-What happens if the document is not a string? E.g. a vector of values.
+We start with the signature matrix describing $n$ documents, generated using $k$ hash functions.
+This matrix is divided $b$ *bands*, each containing $r$ *rows* (with $b dot r = k$).
 
-The encoding in terms of set and the Jaccard similarity could not be efficient anymore.
-We need to *abstract* the process.
+For each band, hash the $r$-element column vector of each document into a bucket.
+Two documents end up in the same bucket for a band if and only if their signature values in that band are *identical* (neglecting collisions).
+
+Each document is sent to $b$ buckets (one per band).
+Any pair of documents that *shares a bucket* (they contained the same values is at least one band) becomes a _candidate pair_.
+
+#figure(
+  {
+    cetz.canvas({
+      import cetz.draw: *
+      set-style(stroke: (thickness: 0.5pt))
+
+      let cw = 0.55 // column width
+      let rh = 0.42 // row height
+
+      // band-vals.at(b).at(c).at(r) = value at band b, document c, row r
+      // Band 1: all three documents have different per-band vectors
+      // Band 2: D1 = D2 = (2,4,1), D3 = (3,2,5)  → D1 and D2 collide
+      // Band 3: all different again
+      let bv = (
+        (("1", "3", "2"), ("4", "1", "3"), ("2", "3", "5")),
+        (("2", "4", "1"), ("2", "4", "1"), ("3", "2", "5")),
+        (("4", "2", "3"), ("1", "5", "2"), ("5", "4", "1")),
+      )
+
+      let bfill = (rgb("#daeaf7"), rgb("#fef3cd"), rgb("#d5f5e3"))
+      let bstroke = (rgb("#5dade2"), rgb("#d4ac0d"), rgb("#52be80"))
+      let dcol = (rgb("#1a5276"), rgb("#1e8449"), rgb("#922b21"))
+
+      let mw = 3 * cw
+      let mh = 9 * rh
+
+      // column headers
+      for c in range(3) {
+        content(((c + 0.5) * cw, 0.28), text(size: 7.5pt, fill: dcol.at(c))[$D_#(c + 1)$])
+      }
+
+      // matrix bands
+      for b in range(3) {
+        let y0 = -(b * 3 * rh)
+        let y1 = -((b + 1) * 3 * rh)
+        rect((0, y0), (mw, y1), fill: bfill.at(b), stroke: (paint: bstroke.at(b), thickness: 0.55pt))
+        content((-0.6, (y0 + y1) / 2), text(size: 6.5pt)[band #(b + 1)], anchor: "mid-east")
+        for c in range(3) {
+          for r in range(3) {
+            content(
+              ((c + 0.5) * cw, -((b * 3 + r) * rh + rh / 2)),
+              text(size: 6pt, fill: dcol.at(c))[#bv.at(b).at(c).at(r)],
+            )
+          }
+        }
+      }
+
+      // column dividers
+      for c in range(1, 3) {
+        line((c * cw, 0), (c * cw, -mh), stroke: (paint: luma(165), thickness: 0.25pt))
+      }
+      content((mw / 2, -mh - 0.25), text(size: 6.5pt)[signature matrix])
+
+      // ---- Buckets (stacked vertically within each band) ----
+      let bkx = mw + 0.7 // left edge of bucket column
+      let bkw = 0.62 // bucket width
+      let bkpad = 0.04 // arrow-tip clearance
+
+      for b in range(3) {
+        if b == 1 {
+          // D1 = D2 → shared bucket spanning rows 0+1; D3 → own bucket at row 2
+          let shared_yc = -((b * 3 + 1.0) * rh) // centre between rows 0 and 1
+          let shared_ht = 2 * rh - 0.06
+          let d3_yc = -((b * 3 + 2.5) * rh)
+          let d3_ht = rh - 0.06
+
+          // shared bucket (thick border to signal collision)
+          rect(
+            (bkx, shared_yc + shared_ht / 2),
+            (bkx + bkw, shared_yc - shared_ht / 2),
+            fill: rgb("#fef3cd"),
+            stroke: (paint: rgb("#d4ac0d"), thickness: 0.85pt),
+          )
+          content((bkx + bkw / 2, shared_yc + 0.14), text(size: 5.5pt, fill: dcol.at(0))[$D_1$])
+          content((bkx + bkw / 2, shared_yc - 0.14), text(size: 5.5pt, fill: dcol.at(1))[$D_2$])
+
+          // D3 bucket
+          rect(
+            (bkx, d3_yc + d3_ht / 2),
+            (bkx + bkw, d3_yc - d3_ht / 2),
+            fill: rgb("#fef3cd"),
+            stroke: (paint: rgb("#d4ac0d"), thickness: 0.55pt),
+          )
+          content((bkx + bkw / 2, d3_yc), text(size: 5.5pt, fill: dcol.at(2))[$D_3$])
+
+          // D1 and D2 arrows converge to shared bucket centre
+          let d1_y = -((b * 3 + 0.5) * rh)
+          let d2_y = -((b * 3 + 1.5) * rh)
+          line(
+            (mw + bkpad - 1.25, d1_y - 0.1),
+            (bkx - bkpad, shared_yc),
+            mark: (end: ">", size: 0.14),
+            stroke: (paint: dcol.at(0), thickness: 0.45pt),
+          )
+          line(
+            (mw + bkpad - 0.7, d2_y),
+            (bkx - bkpad, shared_yc),
+            mark: (end: ">", size: 0.14),
+            stroke: (paint: dcol.at(1), thickness: 0.45pt),
+          )
+          // D3 arrow: straight horizontal
+          line(
+            (mw + bkpad - 0.2, d3_yc),
+            (bkx - bkpad, d3_yc),
+            mark: (end: ">", size: 0.14),
+            stroke: (paint: dcol.at(2), thickness: 0.45pt),
+          )
+
+          // candidate pair callout
+          let cann = bkx + bkw + 0.65
+          line(
+            (bkx + bkw + bkpad, shared_yc),
+            (cann - bkpad, shared_yc),
+            mark: (end: ">", size: 0.12),
+            stroke: (paint: rgb("#c0392b"), thickness: 0.45pt),
+          )
+          content(
+            (cann, shared_yc),
+            box(
+              fill: rgb("#fdecea"),
+              stroke: (paint: rgb("#c0392b"), thickness: 0.45pt),
+              inset: 3pt,
+              radius: 2pt,
+              text(size: 5.5pt)[$D_1, D_2$: candidate pair],
+            ),
+            anchor: "mid-west",
+          )
+        } else {
+          // All three documents hash to separate buckets, one per row slot
+          for c in range(3) {
+            let bk_yc = -((b * 3 + c + 0.5) * rh) - 0.1
+            let bk_ht = rh - 0.06
+            rect(
+              (bkx, bk_yc + bk_ht / 2),
+              (bkx + bkw, bk_yc - bk_ht / 2),
+              fill: bfill.at(b),
+              stroke: (paint: bstroke.at(b), thickness: 0.55pt),
+            )
+            content((bkx + bkw / 2, bk_yc), text(size: 5.5pt, fill: dcol.at(c))[$D_#(c + 1)$])
+            // straight horizontal arrow from matrix right edge
+            line(
+              (mw + bkpad - ((3 - c) * 0.45), bk_yc),
+              (bkx - bkpad, bk_yc),
+              mark: (end: ">", size: 0.14),
+              stroke: (paint: dcol.at(c), thickness: 0.45pt),
+            )
+          }
+        }
+      }
+
+      content((bkx + bkw / 2, -mh - 0.25), text(size: 6.5pt)[buckets])
+    })
+  },
+  caption: [Locality Sensitive Hashing],
+)
+
+The *actual* Jaccard similarity is computed *only* for candidate pairs.
+The probability that two documents $S, T$ are not filtered (pass the LSH filter), given their actual similarity $J(S, T) = s$, is:
+$ p(s) = 1 - (1 - s^r)^b $
+
+#proof[
+  We start by computing the probability of matching in one row:
+  $ mr(PP(S "and" T "match in one row")) = s = J(S, T) $
+
+  We can assume independecy between events (rows) because we use random sampling (the parameters of the linear transformation should be selected randomly), thus:
+  $
+    PP(S "and" T "match in all row of a band") & = s^r \
+    underbrace(PP(S "and" T "do not match in at least one row of the band"), = "do not match in one band") & = 1 - s^r \
+    PP(S "and" T "do not match in any band") & = (1 - s^r)^b \
+    underbrace(mr(PP(S "and" T "match in at least one band")), = (S, T) "pass the LSH filter") & = 1 - (1 - s^r)^b \
+    & = p(s)
+  $
+]
+
+#warning[
+  This is an approximation algorithm, two possible error cases exist:
+  - *False Positives (FP)*: pairs that pass the LSH filter but are not actually similar.
+    Not a problem, as the actual similarity is computed.
+  - *False Negatives (FN)*: truly similar pairs that do not share any bucket and are never compared, these are missed results.
+]
+
+==== Choice of $b$ and $r$: the treshold $t$
+
+The choice of the number of bands $b$ and rows per band $r$ (such that $r b = k$) modifies how the filter behaves.
+We need to introduce the *treshold* $t$: the similarity level where a pair of documents has a *50% chance* of passing the LSH filter.
+
+#example[
+  With $t = 0.8$, documents that have a Jacccard similarity of $0.8$, pass the filter only $50%$ of the times.
+  This is _not good_ if we want to identify documents with 80% similarity, as only approximately half are individuated.
+]
+
+To determine the exact value of the treshold, we can analyze the behaviour of function $p(s)$, the probability of passing the LSH.
+The function $p(s) = 1 - (1-s^r)^b$ has a *sigmoid-like* shape: it starts flat near $0$, rises steeply in the middle, then flattens near $1$.
+The treshold, where the trend changes, is the *steepest* point of that function.
+
+// TODO: add sigmoid graph: Figure 3.8 on the book
+
+To find the steepest point, first compute the _first derivative_, that gives us the steepness of the funcion.
+Then compute the _second derivative_ and _put it to zero_: the maximum point of the function (the maximum steepness)
+
+$
+   p'(s) & = b r s^(r-1) (1-s^r)^(b-1) \
+  p''(s) & = -b r s^(-2 + r) (1 - s^r)^(-2 + b) (1 - s^r + r (-1 + b s^r)) \
+$
+
+The exact root is complex, but a good approximation is:
+$ t approx (1/b)^(1/r) $
+
+#informally[
+  / Strict filter:
+    High $r$, low $b$: documents must match on a lot of hash functions perfectly just to share one bucket.
+    This is very hard.
+    The threshold $t$ shifts to $1$.
+
+  / Loose filter:
+    Low $r$, High $b$: documents only need to match few hashes.
+    This is very easy.
+    The threshold $t$ shifts to $0$.
+]
+
+This result can be used to determine the values of $b$ and $r$:
+- determine the similarity of documents that we want to make pass the filter
+- fix a treshold $t$ so that almost all of these documents pass the filter
+- adjust $r$ and $b$ to match that treshold
+
+#example[
+  Suppose we have $k = 100$ hash functions and we want to identify documents with Jaccard similarity at least $0.8$.
+
+  By choosing a lower treshold $t$, we make sure pairs with 80% similarity pass the filter more often.
+  We can try with:
+  $ b = 20, quad r = 5, quad t = (1/20)^(1/5) approx 0.55 $
+
+  The probability of passing the filter, for actual similarity $s$ is:
+  #align(center, table(
+    columns: (auto, auto),
+    align: center,
+    table.header[$s$][$p(s)$],
+    [0.2], [0.006],
+    [0.3], [0.047],
+    [0.4], [0.186],
+    [0.5], [0.47],
+    [0.6], [0.802],
+    [0.7], [0.975],
+    [0.8], [0.9996],
+  ))
+
+  Documents with $80%$ similarity become a candidate pair with probability $approx 99.96%$.
+]
+
+#informally[
+  The full pipeline for finding similar documents:
+  + *Shingling*: preprocess (strip stop-words), build $k$-shingles - pick $k$ based on document type.
+  + *Min-hashing*: build the signature matrix with $n$ hash functions.
+  + *LSH*: divide the signature matrix into $b$ bands of $r$ rows each and hash each band's column into a bucket.
+    Tweak $b$ by exploiting the treshold value $t$.
+  + *Verification*: for each candidate pair (same bucket in at least one band), compute the actual Jaccard similarity and discard pairs below the wanted similarity.
+]
 
 == Generalized Process
 
@@ -755,6 +929,3 @@ For vectors in continuous space, we use the angle between them. The LSH function
 In a continuous probability space, we can select any angle between $0$ and $pi$. The probability of being on the same side decreases linearly as the angle $theta$ increases:
 $ P = 1 - (theta)(pi) $
 Therefore, the cosine distance is $(d_1, d_2, 1 - d_1/pi, 1 - d_2/pi)$-sensitive.
-
-
-
