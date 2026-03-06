@@ -244,12 +244,16 @@ Computing the signature matrix then only requires a single pass over it:
 At the end, $"SIG"(i, c)$ equals the minimum $h_i(r)$ over all rows where document $c$ has a $1$.
 This is exactly the min hash value.
 
-=== Signature Matrix and Jaccard Similarity
+=== Signature Matrix and Jaccard Similarity <sig-matrix-jaccard-sim>
 
 Given a signature matrix, we can estimate the Jaccard similarity between two documents without accessing the full characteristic matrix.
 
+#set math.equation(numbering: "(1.1)", supplement: "EQ")
+
 The key insight is that if we apply a _random_ hash function $H$ to two documents $S$ and $T$, the probability that they produce the same result equals the Jaccard similarity:
-$ PP(H(S) = H(T)) = J(S, T) $
+$ PP(H(S) = H(T)) = J(S, T) $<jaccard-sim-probability>
+
+#set math.equation(numbering: none, supplement: "EQ")
 
 #warning[
   $H$ represents a _random_ hash function chosen uniformly from the set of all possible permutations, not a fixed function (the equivalent of an _aleatoric_ variable for functions).
@@ -588,344 +592,265 @@ This result can be used to determine the values of $b$ and $r$:
 
 == Generalized Process
 
-Given pairs of encoded documents, we want to calculate their similarity.
-Instead of similarity, we can think of *distance* (similar objects are close).
-The distance functions takes a pair and returns a value:
+So far we have assumed that objects are strings, representable as sets of shingles.
+What if we are comparing vectors, images or anything that does not map to a set?
+In those cases, the shingle-based encoding and Jaccard similarity may not apply.
+We need to *generalize* the approach to arbitrary data types.
+
+=== Distance Measures
+
+We now frame similarity in terms of *distance*: similar objects are _close_, dissimilar ones are _far_.
+A distance function maps pairs of objects to non-negative real numbers:
 $ d : X times X -> RR $
-Where some properties are verified:
-+ $forall x, y in X, quad d(x, y) >= 0, quad d(x, y) = 0 space <--> space x = y$
-+ commutativity: $forall x, y in X, quad d(x, y) = d(y, x)$
-+ triangle inequaltiy: $forall x, y, z in X, quad d(x, y) <= d(x, z) + d(z, y)$
+For $d$ to be a proper metric, it must satisfy three properties:
++ _distance to self_: $forall x, y in X, quad d(x, y) >= 0, quad d(x, y) = 0 <--> x = y$
++ _symmetry_: $forall x, y in X, quad d(x, y) = d(y, x)$
++ _triangle inequality_: $forall x, y, z in X, quad d(x, y) <= d(x, z) + d(z, y)$
 
-Distances that work on vectors of real numbers of size $d$: $X = RR^d$.
-These distances are called $L_p$-distances
-$ d(x, y) = (sum_(i=1)^d |x_i - y_i|^p)^(1/p) $
-- Manhattan distance ($p = 1$)
-- Euclidian distance ($p = 2$)
+#warning[
+  Not all the distance measures listed below are *Euclidean spaces*.
 
-#note[
-  Proving the three properties for these is pretty trivial.
-]
+  A property of Euclidean spaces simple to verify is that the _average_ of two points is still a _valid point_ in the space.
 
-// TODO: what are L_p distances? What have to do with the Contour plot?
-
-Another distance: Jaccard distance // TODO: what is that used for?
-$ d(A, B) = 1 - J(A, B) $
-
-#note[
-  Proving the first two properties is pretty easy.
-  The triangle disequality is a bit tricky.
-
-  #proof[
-    Because of how the similarity is defined, we can rewrite the distance as:
-    $ d(A, B) = PP(H(A) != H(B)) $
-    We can intoduce a thrid element $C$:
-    $ H(A) != H(B) --> H(A) != H(C) or H(B) != H(C) $
-
-    #note[
-      Two trivial probability properties:
-      - $A --> B$ means $PP(A) <= PP(B)$
-      - $PP(A union B) <= P(A) + P(B)$
-    ]
-
-    $
-      PP(H(A) != H(B)) <= PP(H(A) != H(C) union H(B) != H(C)) \
-      PP(H(A) != H(B)) <= PP(H(A) != H(C)) + PP(H(B) != H(C))
-    $
+  #example[
+    The average of two real points is still a real point, so that's an Euclidean space.
+    That's not true for integer points.
+    Likewise, the average of two strings makes no sense.
   ]
 ]
 
-Distance taht can be used on vectors with common origin (directions on the space): *Cosine* distance.
-Given two vectors $x$ and $y$ with angle $theta$:
-$ d(x, y) = theta_(x y) = arccos (x y)/(||x|| ||y||) $
+==== Euclidean Distances ($L_p$-distances)
 
-#note[
-  Two vectors with the same direction but different magnitude are considered the same vector.
+Distances that work on vectors of real numbers of size $d$: $X = RR^d$.
+These distances are called $L_p$-distances, with general formula:
+$ d(x, y) = (sum_(i=1)^d |x_i - y_i|^p)^(1/p) $
+
+The most famouse ones are the Manhattan distance, $L_1$-norm:
+$ d(x, y) = sum_(i=1)^d |x_i - y_i| $
+
+the Euclidean distance, $L_2$-norm:
+$ d(x, y) = sqrt(sum_(i=1)^n (x_i - y_i)^2) $
+
+and the $L_infinity$-norm, where only the dimension with largest difference matters:
+$ d(x, y) = max_i |x_i - y_i| $
+
+Proving that the properties hold is trivial.
+
+==== Jaccard Distance
+
+#warning[
+  This is the Jaccard _distance_, not the Jaccard _similarity_!
 ]
 
-#informally[
-  A simple trick to check if a space is Euclidian is to check if the midpoint between two elements is a point of the space.
+The *Jaccard distance* is defined as the complement of Jaccard similarity:
+$ d(x, y) = 1 - J(x, y) $
 
-  E.g. Strings.
-]
+Proving the first two properties is pretty easy.
+The triangle disequality is a bit tricky.
 
-For strings: Lehvehnstein distance.
-Repeatedly apply one of the operations:
-- adding character
-- modifying character
-- deleting character
-the distance is the minimum numner of operations to get from one string to another.
+#proof[
+  Because of how the similarity is defined (Section #link-section(<sig-matrix-jaccard-sim>), #link-equation(<jaccard-sim-probability>)), we can rewrite the distance as:
+  $ d(x, y) = PP(H(x) != H(y)) $
 
-For binary words with same length: Hamming distance:
-Number of positions with different bits between two binary words.
+  #note[
+    $H$ is a random hash function.
+  ]
 
-#note[
-  Hamming distance can be generalized over any alphabet e.g. "sad" vs "sun" would give distance $2$.
-]
+  We can intoduce a thrid element $z$.
+  If the has of $x$ and $y$ are different, then at least one of the two is not equal to the hash of $z$:
+  $ H(x) != H(y) quad -> quad H(x) != H(z) space or space H(y) != H(z) $<jaccard-distance-z>
 
-== LSH with Generic Distance
+  We need two intermediate probability results.
 
-The LSH method divided documents into bands and then two documents were similar if two document shared the same band, with probability:
-$ PP(f(x) = f(y)) $
+  #theorem("Lemma")[
+    If an event implies another one, then its probability is smaller.
+    $ A -> B quad PP(A) <= PP(B) $
+  ]<event-implication-smaller>
 
-We needed a family of min hash functions for that end.
+  #theorem("Lemma")[
+    The probability of the union of the events is, at most, their sum.
+    $ PP(A union B) <= PP(A) + PP(B) $
+  ]<probability-union-smaller-sum>
 
-We define a property that we would like for our families of hash function.\
-The family $cal(F)$ is $(d_1, d_2, p_1, p_2)$-sensitive if (where $d_1, d_2$ refer to distances and $p_1, p_2$ refer to probabilities):
-$
-  forall f in cal(F), quad forall x, y in X, \
-  d(x, y) <= d_1 --> PP(f(x) = f(y)) >= p_1 \
-  d(x, y) >= d_2 --> PP(f(x) = f(y)) <= p_2
-$
-
-#note[
-  We talk of probability because we have some randomness in the family.
-]
-
-#example[
-  $cal(F)$: min hash, $d$: Jaccard
+  From #link-equation(<jaccard-distance-z>):
   $
-    d(x, y) <= d_1 --> 1- J(x, y) <= d_1 \
-    J(x, y) >= 1- d_1 --> PP(h(x) = h(y)) >= underbrace(1 - d_1, = p_1)
+    PP(H(x) != H(y)) space &<= space PP(H(x) != H(z) union H(y) != H(z)) space &#comment("applying " + link-teorema(<event-implication-smaller>)) \
+    PP(H(x) != H(y)) space & <= space PP(H(x) != H(z)) + PP(H(y) != H(z)) space qed space &#comment("applying " + link-teorema(<probability-union-smaller-sum>))
   $
-  with $h$ being one random hash function from the family.
-
-  This proves that this follows the property.
-]
-
-=== $"AND"$-Construction and $"OR"$-Construction
-
-Given a $cal(F)$, we want to get an $cal(F)_"and"$ that is better in terms of $(d_1, d_2, p_1, p_2)$
-
-#note[
-  $cal(F)$ can be both finite and infinite
-]
-
-$ cal(F) = {f_1, f_2, ...} $
-Propertly elaborating the functions in $cal(F)$ we can get to a $cal(F)_"and"$ family.
-We want to extract $r in NN$ functions from $cal(F)$ (not in order):
-$ f' in cal(F)_"and" -> f' = (f_1 in cal(F), ..., f_r in cal(F)) $
-
-We are only interested in $PP(f(x) = f(y))$:
-$ (f'(x) = f'(y)) <--> forall j in [1, r] f_(i j)(x) = f_(i j)(y) $
-
-Why do we do this?
-We have $cal(F)$ that enjoys the property, but we are not satisfied by the values of $p_1, p_2$.
-
-$
-  PP(f'(x) = f'(y)) = PP(inter.big_(j=1)^r {f_(i j)(x) = f_(i j)(y)}) = product_(j=1)^r underbrace(PP(f_(i j)(x) = f_(i j)(y)), >= p_1) >= p_1
-$
-
-...
-
-$ d(x, y) <= d_1 --> PP(f'(x) = f'(y)) >= p_1^r $
-$ d(x, y) >= d_2 --> PP(f'(x) = f'(y)) <= p_2^r $
-
-...
-
-$ f'(x) = f'(y) <--> exists j = 1, r f_(i j)(x) = f_(i j)(y) $
-$
-  forall j quad d(x, y) <= d_1 --> & PP(f_(i j)(x) = f_(i j)(y)) >= p_1 \
-                                   & PP(f_(i j)(x) != f_(i j)(y)) <= 1 - p_1
-$
-
-$ PP(forall j space { f_(i j)(x) != f_(i j)(y)}) = product_(j = 1)^r PP(f_(i j) f(x) != f_(i j)(y)) $
-
-So:
-$
-    d(x, y) <= d_1, \
-  PP(f'(x) = f'(y)) & = PP(exists j f_(i j)(x) = f_(i j)(y)) \
-                    & = 1 - PP(forall j f_(i j)(x) != f_(i j)(y)) \
-                    & >= 1 - ( 1- p_1)^r
-$
-
-The analogous thing can be done with the other parts of the property (with $d_2$ and $p_2$).
-
-#informally[
-  Recap: if $x$ and $y$ are similar (less than $d_1$), using my original family o function I woul have that the prob that selecting them was higher tha $p_1$.
-  Now using the extended family, the probabolity of selecting them is $1 - ( 1- p_1)^r$.
-
-  We can increase the probability at the cost of increasing also the other treshold.
-]
-
-#informally[
-  What happens if I apply the OR transformation to the AND family?
-
-  With this construction we obtain $(d_1, d_2, 1-(1-p_1^k)^k, 1-(1-p_2^k)^k)$-sensitive.
-
-  Because of the non-linearity of the functions we used, we raised $p_1$ and lowered $p_2$.
-  We can apply this idea indefinitely times, we are only limited by the number of functions in the original family $cal(F)$.
-
-  This construction is independent of the function.
-]
-
-=== Functions for distance
-
-Starting from a distance, what kind of functions can I use?
-
-==== Hamming Distance $h$
-
-Words of lenght $d$
-
-$ forall i = 1, ..., d, quad f_(i)(x) = x_i $
-$ PP(f_i(x) = f_i(y)) = 1 - h(x, y) / d $
-
-Hamming id $(d_1, d_2, 1 - d_1/d, 1- d_2/d)$-sensitive
-
-#note[
-  This is an example where the original family is limited, we have as much functions as components in the vector.
 ]
 
 ==== Cosine Distance
 
-Directions in space, so vectors but only the direction of the vector (not the magnitude)
+The *cosine distance* can be used on vectors with a common origin (directions in space).
+The resulting distance will be in the range 0 to 180 degress regardless of the dimension of the vector.
+
+Given two vectors $x$ and $y$, the cosine distance is defined exploiting the dot product and normalization:
+$ d(x, y) = theta_(x y) = arccos (x y)/(||x|| ||y||) $
+
+#warning[
+  Two vectors with the same direction but different *magnitude* are considered the same.
+]
+
+==== Levenshtein Distance (Edit Distance)
+
+When the points are strings, Levenshtein or Edit distance can be used.
+It is defined as the minimum number of character operations (_insertion_, _deletion_, _substitution_) to _transform_ one string into the other.
+
+#note[
+  Given strings $x$ and $y$, the edit distance can be computed as:
+  $ |x| + |y| - 2 |"LCS"(x, y)| $
+  where $"LCS"$ is their #link("https://en.wikipedia.org/wiki/Longest_common_subsequence")[longest common subsequence].
+]
+
+#example[
+  Given $x = "abcde"$, $y = "acfdeg"$, the conversion is:
+  + delete $"b"$
+  + insert $"f"$
+  + insert $"g"$
+  Therefore, the Levenshtein distance is $3$.
+]
+
+==== Hamming Distance
+
+Primarly used when the vectors are boolean, but it can be used on vectors of any component.
+The distance is defined as the number of components that differ.
+
+#example[
+  Hamming distance between $d(1101, 1000) = 2$, $d("luca", "lace") = 2$.
+]
+
+=== LSH with Generic Distance
+
+To generalize LSH beyond Jaccard similarity, we need to characterize what makes a _family of hash functions_ suitable for a given distance.
+Recall that in LSH, two items are declared *candidate pairs* if they collide under at least one hash function.
+
+#note[
+  Some prerequisites are assumed on the hash functions of the family:
+  - _statistical indipendence_, it is possible to estimate the probability of more events by multiplying each event
+  - _efficiency_, faster than comparing each pair (faster than quadratic)
+  - _combinable_ to build functions that are better at avoiding FP and FN
+]
+
+The _effectiveness_ of the family depends on how the collision probability relates to the distance between items.
+We say the family $cal(F)$ is *$(d_1, d_2, p_1, p_2)$-sensitive* (with $d_1 < d_2$ and $p_1 > p_2$) if:
+$
+  forall f in cal(F), quad forall x, y in X, \
+  d(x, y) <= d_1 space -> space PP(f(x) = f(y)) >= p_1 \
+  d(x, y) >= d_2 space -> space PP(f(x) = f(y)) <= p_2
+$
 
 #informally[
-  The idea is that given a direction $f$, we need to check if the two vectors are in a same half-plane, meaning $f(x) = f(y)$.
+  The probabily of collision:
+  - is higher than $p_1$ for pairs closer than $d_1$
+  - is lower than $p_2$ for pairs more distant than $d_2$
 ]
 
-In the special case when $x$ and $y$ point in the same direction: $d(x, y) = 0, PP = 1$.
-In the opposite case, when they are on the same direction but point to opposite sides: $PP = 0$.
+// TODO: @alsacchi draw this in typst
+#figure(
+  image("../content/03-d1d2p1p2-sensitive-function.png", width: 70%),
+  caption: [Behaviour of $(d_1, d_2, p_1, p_2)$-sensitive function],
+)
 
-The probability linearly decreases while the angle grows from $0$ to $pi$, so the $PP$ is $PP = 1 - d/pi$.
+#example[
+  Take $cal(F)$ as the minhash family and $d$ as the Jaccard distance.
+  For a random hash function $h$:
+  $
+    d(x, y) <= d_1 & space -> space 1 - J(x, y) <= d_1 \
+                   & space -> space J(x, y) >= 1 - d_1 \
+                   & space -> space PP(h(x) = h(y)) >= underbrace(1 - d_1, = p_1)
+  $
+  The analogous holds for $d_2$, confirming that the minhash family is $(d_1, d_2, 1-d_1, 1-d_2)$-sensitive.
+]
 
-So the cosine couple with this family is $(d_1, d_2, 1- d_1/pi, 1- d_2/pi)$-sensitive.
+==== $"AND"$-Construction and $"OR"$-Construction
 
+In practice the raw sensitivity of a family is often _not good_ enough.
+AND and OR constructions let us *amplify* these probabilities.
+Multiple constructions can be applied by *composition*.
 
+#example[
+  With min-hash and Jaccard, choosing $d_1 = 0.1$ and $d_2 = 0.9$ yields a $(0.1, 0.9, 0.9, 0.1)$-sensitive family: similar pairs collide with probability $90%$, which is too low for massive datasets.
+]
 
-
----
-
-// what jack's brain has accomplished
-
-== Recap: LSH and the "S-Curve"
-We were talking about the similarity pipeline for massive datasets. The main goal is to avoid the $O(n^2)$ complexity of comparing every single pair of documents.
-
-In particular, we focused on the probability that a pair of documents $(S, t)$ end up in the same bucket. If we use $b$ bands and $r$ rows per band, the probability $p(s)$ that two docs with Jaccard similarity $s$ match in at least one band is:
-
-$ P(S, T "match at least in one band") = 1 - (1 - s^r)^b = p(s) $
-
-This function gives us the *sigmoid graph* (the S-curve).
-- *FP (False Positives):* non-similar docs that pass LSH.
-- *FN (False Negatives):* similar docs that don't pass LSH.
-
-=== Finding the Threshold
-If we take the derivative of the sigmoid graph, we obtain a *bell-shaped curve*. To find the exact maximum point (the "steepest" part of the S-curve), we should technically look at the second derivative, but for our purposes, an approximation $s^*$ is enough.
-
-We can fix a similarity threshold $t$ as:
-$ t approx (1/b)^(1/r) $
-
-Now, if we want to ensure that our $s^*$ is equal to a specific threshold we fixed (we only care about docs with Jaccard $> t o t$), we need to select $b$ and $r$ carefully. Since we also know that $b dot r = n$ (where $n$ is the number of rows in the signature matrix), we just solve a system of two equations in two unknowns ($b$ and $r$).
-
-== Review of the Overall Process
-1. *Shingling:* Start from the document, strip stop-words, and decide the $k$-shingles size depending on the category of docs.
-2. *Min-Hashing:* Create the signature matrix, deciding how many rows $n$ to use.
-3. *Parameters:* Fix the threshold $t$ and solve the system to get optimal values for $b$ and $r$.
-4. *LSH:* Divide the matrix into $b$ bands and apply hashing.
-5. *Verification:* For each candidate pair, compute the actual Jaccard similarity and eliminate pairs that don't surpass $t$.
-
-== Distances
-What happens when the documents are not strings? For example, if we use a table to avoid duplicated records, the document is basically a vector. Jaccard might not be applicable here.
-
-We need to measure the degree of similarity using *distances*. Distance is the dual of similarity:
-- Similarity is big $arrow$ Distance is small.
-- Similarity is small $arrow$ Distance is big.
-
-A function $d(x, y)$ is a distance if it satisfies:
-- *Positivity:* $d(x, y) >= 0$ and $d(x, y) = 0$ iff $x = y$.
-- *Symmetry:* $d(x, y) = d(y, x)$.
-- *Triangle Inequality:* $d(x, y) <= d(x, z) + d(z, y)$.
-
-=== Typical Distances
-1. *Euclidean Distance ($L_2$):* The length of the segment joining two points in $RR^d$. It's part of the $L_p$ family:
-  $ d(x, y) = (sum_{i=1}^d |x_i - y_i|^p)^(1/p) $
-  *Note:* If $p=1$ we get the *Manhattan distance*. If we plot $d(x,y)=1$ for $p=2$ we get a circle; for Manhattan, we get a square.
-
-
-
-2. *Jaccard Distance:* Defined as $1 - "Jaccard Similarity"$.
-  *Triangle inequality proof:* Recall $J(A, B) = P(h(A) = h(B))$, so $d(A, B) = P(h(A) != h(B))$. If $h(A) != h(B)$, then for any third set $C$, $h(C)$ must be different from either $h(A)$ or $h(B)$. In terms of probability:
-  $ P(h(A) != h(B)) <= P(h(A) != h(C) " or " h(B) != h(C)) <= d(A, C) + d(B, C) $
-
-3. *Cosine Distance:* Objects are vectors starting from a common origin (directions).
-  $ d(x, y) = theta = arccos((x dot y) / (||x|| dot ||y||)) $
-  It's basically the angle between vectors.
-
-4. *Edit Distance (Levenshtein):* Minimum number of atomic operations (add, delete, modify char) to transform string $s$ into $t$.
-
-5. *Hamming Distance:* Number of positions in which bits (or chars) differ.
-  Example: `11010` and `10110` have distance 2.
-
-== Formalizing LSH Families
-Can we extend LSH to these distances? We need to speak about probabilities of events because the algorithm is random.
-
-A family of functions $F$ is *$(d_1, d_2, p_1, p_2)$-sensitive* if:
-- If $d(x, y) <= d_1$, then $P(f(x) = f(y)) >= p_1$ (Close things likely collide).
-- If $d(x, y) >= d_2$, then $P(f(x) = f(y)) <= p_2$ (Far things unlikely collide).
-
-We can amplify these properties:
-- *AND Construction:* $f'(x) = f'(y)$ iff all $r$ functions match. It makes the probability $p^r$.
-- *OR Construction:* Use bands to make it $1 - (1 - p)^b$.
-
-  trying to use "OR" rather than "AND" to see how the probability changes... (need to finish this part)
-
-// what jack's brain has accomplished part 2: 03/02/2026, first part of the lecture
-
-In previous lessons, we defined a family of functions $cal{F}$ that is $(d_1, d_2, p_1, p_2)$-sensitive relative to a distance measure $d$. The goal of LSH is to design functions such that:
-- If $d(x, y) <= d_1$, then $P[h(x) = h(y)] >= p_1$ (High probability for similar items).
-- If $d(x, y) >= d_2$, then $P[h(x) = h(y)] <= p_2$ (Low probability for dissimilar items).
-
-Ideally, we want $p_1$ to be very large (close to 1) and $p_2$ to be very small (close to 0). For example, using *Jaccard Similarity*, if we set $d_1 = 0.1$ and $d_2 = 0.9$, our family is $(0.1, 0.9, 0.9, 0.1)$-sensitive. While this aligns with common sense, a probability of $0.9$ is often not robust enough for massive datasets where we might require $p_1 > 99.99%$.
-
-== Inception of Functions
-To decrease the gap between "good" and "professional" probabilities, we introduce *AND* and *OR* constructions. This is essentially a "filtering" mechanism: we want the function to return a match only under specific logical constraints.
-
-=== The AND-Construction
-We create a new function $f$ by combining $k$ independent functions from $cal{F}$.
-$ f(x) = (h_1(x), h_2(x), dots, h_k(x)) $
-The condition $f(x) = f(y)$ holds if and only if $h_i(x) = h_i(y)$ for *all* $i = 1, dots, k$.
-The new sensitivity becomes:
-$(d_1, d_2, p_1^k, p_2^k)$-sensitive
-*Personal Note:* This effectively lowers the probability of a false positive ($p_2$ drops quickly), but unfortunately, it also lowers $p_1$.
-
-=== The OR-Construction
-To fix the drop in $p_1$, we apply the *OR-construction*. If we take $f$ such functions, the probability of a match is:
-$ 1 - (1 - p^k)^f $
-This construction creates an S-curve, allowing us to sharpen the transition between "similar" and "dissimilar."
-
-=== Inception
-
-we can apply these constructions to the *extended* family itself. If we take an AND-family and apply an OR-construction to it, we get:
-$f_(o r) (x) = f_(o r ) (y)$ i.f.f. $exists i : f_i (x) = f_i (y)$
-Substituting the underlying probability $p$, the new sensitivity becomes:
-$ (d_1, d_2, 1 - (1 - p_1^k)^f, 1 - (1 - p_2^k)^f) $-sensitive
-
-By stacking these levels (like "Inception"), we can reach extreme values like $(0.1, 0.9, 0.9998, 0.0003)$.
 #note[
-  This works perfectly if our starting family $cal{F}$ is infinite. If the family is finite (e.g., small bit-vectors), we are limited in how many "steps" of inception we can perform before running out of unique functions.
+  $cal(F)$ can be both finite and infinite.
+  With a finite family (e.g. Hamming over $d$ dimensions), the number of applicable constructions is limited by the size of $cal(F)$.
 ]
 
-== Hamming Distance
-Hamming distance is defined over words of a fixed length $d$ from any alphabet.
-We define a family where each function $f_i$ simply selects the $i$-th coordinate:
-$f_i (x) = x_i quad$ for $i in {1, dots, d}$
+The *AND construction* builds a new family $cal(F)_"AND"$, where each composite function $f'$ bundles $r$ members of $cal(F)$:
+$ f' = (f_(i_1), ..., f_(i_r)) quad "with each" f_(i_j) in cal(F) $
 
-If we pick an index $i$ uniformly at random, the probability that two words $x$ and $y$ match at that coordinate is:
-$ P[f_i (x) = f_i (y)] = 1 - $Hamming$(x, y){d}$
-This yields a $(d_1, d_2, 1 - d_1/d, 1 - d_2 /d)$-sensitive family. Again, the size of our family is limited by the dimensionality $d$ of the vectors.
+Two items match under $f'$ only if *all* $r$ components agree:
+$ f'(x) = f'(y) space <--> space mr(forall j) space f_(i_j)(x) = f_(i_j)(y) j $
 
-== Cosine Distance
+By independence, when $d(x,y) <= d_1$ each factor is $>= p_1$, so the probability that *all* components agree is:
+$
+  PP(f'(x) = f'(y)) = product_(j=1)^r underbrace(PP(f_(i_j)(x) = f_(i_j)(y)), >= p_1) >= p_1^r
+$
 
-For vectors in continuous space, we use the angle between them. The LSH function is defined by picking a random hyper-plane (a random direction).
+Analogously, when $d(x, y) >= d_2$ each factor is $<= p_2$, so the product is $<= p_2^r$.
 
-- *Logic:* A random hyper-plane either separates two vectors or it doesn't.
-- *Case 1:* Vectors $x$ and $y$ lie on opposite sides of the plane $-> f(x) != f(y)$.
-- *Case 2:* Vectors $x$ and $y$ lie on the same side $-> f(x) = f(y)$.
+The resulting family $cal(F)_"AND"$ is: *$ (d_1, d_2, p_1^r, p_2^r)"-sensitive" $*
 
-*Special Cases:*
-- If $x = y$, the angle $theta = 0$, so they always lie on the same side ($P=1$).
-- If $x$ and $y$ are opposite (anti-parallel), they will *always* be separated ($P=0$).
+#informally[
+  Both $p_1$ and $p_2$ are raised to the $r$-th power, so both shrink.
+  The AND construction trades recall (may miss more similar pairs, *more FN*) for precision (fewer false positives, *less FP*).
+]
 
-In a continuous probability space, we can select any angle between $0$ and $pi$. The probability of being on the same side decreases linearly as the angle $theta$ increases:
-$ P = 1 - (theta)(pi) $
-Therefore, the cosine distance is $(d_1, d_2, 1 - d_1/pi, 1 - d_2/pi)$-sensitive.
+The *OR construction* does the opposite, $cal(F)_"OR"$ is defined by taking $r$ functions and matching if *any* one agrees:
+$ f'(x) = f'(y) space <--> space mr(exists j) space f_(i_j)(x) = f_(i_j)(y) $
+
+By independence, the probability that *all* components disagree is the product that each single one disagrees ($1 - p_1$):
+$ PP(forall j space f_(i_j)(x) != f_(i_j)(y)) = product_(j=1)^r PP(f_(i_j)(x) != f_(i_j)(y)) <= (1-p_1)^r $
+
+Therefore:
+$
+  PP(f'(x) = f'(y)) & = 1 - PP(forall j space f_(i_j)(x) != f_(i_j)(y)) \
+                    & >= 1 - (1 - p_1)^r
+$
+
+The same argument applied to $d(x, y) >= d_2$ gives $PP(f'(x) = f'(y)) <= 1-(1-p_2)^r$.
+
+The resulting family $cal(F)_"OR"$ is:
+*$ (d_1, d_2, 1-(1-p_1)^r, 1-(1-p_2)^r)"-sensitive" $*
+
+#informally[
+  Both $p_1$ and $p_2$ are pushed through $1 - (1 - dot)^r$, so both grow.
+  The OR construction trades precision (more dissimilar pairs collide, *more FP*) for recall (fewer similar pairs are missed, *less FN*).
+]
+
+*Combining* AND and OR (applying one inside the other) lets us push the sensitivity to extreme values.
+The downside is the number of functions that are needed (the family needs to be numerous) and that needs to be applied, making it slower.
+
+#example[
+  Starting from $(0.1, 0.9, 0.9, 0.1)$, a few rounds of AND+OR can yield something like $(0.1, 0.9, 0.9998, 0.0003)$: near-certain detection of similar pairs and near-zero false-positive rate.
+]
+
+==== LSH Families for Hamming Distance
+
+For binary words of length $d$, pick a random coordinate $i$:
+$ forall i = 1, ..., d, quad f_(i)(x) = x_i $
+
+The probability that two words agree on a random coordinate is:
+$ PP(f_i(x) = f_i(y)) = 1 - h(x, y) / d $
+
+This family is $(d_1, d_2, 1 - d_1/d, 1- d_2/d)$-sensitive.
+
+#note[
+  This is a case where the original family is finite: it has exactly $d$ functions, one per dimension.
+  We can only apply the construction $log d$ times before running out of independent functions.
+]
+
+==== LSH Families for Cosine Distance
+
+For vectors where only direction matters, not magnitude.
+
+Picking a random hyperplane through the origin (identified by a random vector), gives probabilities:
+- the vectors point in the same direction, any hyperplane puts them on the same side: $PP = 1$
+- the vectors point in opposite directions, any such hyperplane separates them: $PP = 0$
+- the probability decreases linearly with the angle from $0$ to $pi$
+
+Resulting in:
+$ PP(f_v (x) = f_v (y)) = 1 - theta_(x y) / pi = 1 - d(x, y) / pi $
+
+This family is $(d_1, d_2, 1 - d_1/pi, 1- d_2/pi)$-sensitive.
