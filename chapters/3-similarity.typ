@@ -42,7 +42,7 @@ Before this stage, the text is often *preprocessed*, removing multiple whitespac
   From now on, we will consider as shingle a character.
 ]
 
-Then we construct $k$-grams (or $k$-shingles or only shingle): a sequences of $k$ consecutive *tokens* (characters, words, or other units).
+Then we construct $k$-grams (or $k$-shingles or only shingle): a sequence of $k$ consecutive *tokens* (characters, words, or other units).
 The set of these shingles is the set on which the similarity is applied.
 
 #example[
@@ -78,7 +78,7 @@ Instead, we could *hash* the shingle and store only the integer representing the
 $ h("shingle") -> 32 "bits" $
 
 #note[
-  While this introduces some collisions, meaning two different shingles will be considered the same one, it works really well beacuse _most_ of the possible shingles _never occour_ (such as "kxsdw" string).
+  While this introduces some collisions, meaning two different shingles will be considered the same one, it works really well because _most_ of the possible shingles _never occur_ (such as "kxsdw" string).
 ]
 
 #example[
@@ -86,7 +86,7 @@ $ h("shingle") -> 32 "bits" $
   This matches the space needed for _unhashed_ $4$-shingles, yet hashing $9$-shingles provides *better differentiation* quality: while $4$-shingles account also for very *rare* shingles, hashed $9$-shingles *uniformly distribute* rare shingles across buckets, improving effectiveness.
 ]
 
-=== Charateristic Matrix
+=== Characteristic Matrix
 
 We can store documents using a binary matrix called the _characteristic matrix_:
 - each row represents a *shingle* (identified by its hash bucket, a natural integer)
@@ -128,9 +128,9 @@ We can store documents using a binary matrix called the _characteristic matrix_:
 
 To calculate the Jaccard similarity between two documents, we need to calculate:
 - the *intersection*: number of rows that have $1$ for both documents
-- the *union*: number of rows that have only one $1$
+- the *union*: number of rows that have at least one $1$
 
-This idea works, but the charateristic matrix is *too big* to fit in memory.
+This idea works, but the characteristic matrix is *too big* to fit in memory.
 We need to _compress_ this matrix, being able to compute the similarity without decompressing it.
 
 === Min Hash Function
@@ -139,12 +139,12 @@ We introduce a function that hashes a *document* into a *shingle*.
 $ h : {"docs"} -> {"shingles"} $
 
 To calculate a Min Hash Function three steps are done:
-+ Fix a _row permutation_ (of the shingles) of the charateristic matrix
-+ _Apply_ the permutation to the charateristic matrix
++ Fix a _row permutation_ (of the shingles) of the characteristic matrix
++ _Apply_ the permutation to the characteristic matrix
 + For each document, the resulting shingle is the _row with the first $1$_ in the permuted column
 
 #example[
-  An hash function $h_1$ with the documents from the last example:
+  A hash function $h_1$ with the documents from the last example:
   + fix a permutation of the rows: $[2, 0, 3, 1]$
   + permute the matrix:
     #align(center)[
@@ -297,7 +297,7 @@ $ hat(J)(S, T) = "# matching rows" / n $
 
   Similarities:
   $ hat(J)(S,T) = 2/3 approx 0.67 quad (h_1, h_3 "match") $
-  $ hat(J)(S,U) = 1/3 approx 0.33 quad (h_1 "matches") $
+  $ hat(J)(S,U) = 1/3 approx 0.33 quad (h_2 "matches") $
 ]
 
 The signature matrix solves the _space_ problem, but comparing all pairs is still quadratic in time: every couple of documents needs to be compared
@@ -324,13 +324,13 @@ The solution is to avoid comparing _all_ pairs, and instead focus only on pairs 
 ]
 
 We start with the signature matrix describing $n$ documents, generated using $k$ hash functions.
-This matrix is divided $b$ *bands*, each containing $r$ *rows* (with $b dot r = k$).
+This matrix is divided into $b$ *bands*, each containing $r$ *rows* (with $b dot r = k$).
 
 For each band, hash the $r$-element column vector of each document into a bucket.
 Two documents end up in the same bucket for a band if and only if their signature values in that band are *identical* (neglecting collisions).
 
 Each document is sent to $b$ buckets (one per band).
-Any pair of documents that *shares a bucket* (they contained the same values is at least one band) becomes a _candidate pair_.
+Any pair of documents that *shares a bucket* (they contain the same values in at least one band) becomes a _candidate pair_.
 
 #figure(
   {
@@ -496,9 +496,9 @@ $ p(s) = 1 - (1 - s^r)^b $
   We start by computing the probability of matching in one row:
   $ mr(PP(S "and" T "match in one row")) = s = J(S, T) $
 
-  We can assume independecy between events (rows) because we use random sampling (the parameters of the linear transformation should be selected randomly), thus:
+  We can assume independence between events (rows) because we use random sampling (the parameters of the linear transformation should be selected randomly), thus:
   $
-    PP(S "and" T "match in all row of a band") & = s^r \
+    PP(S "and" T "match in all rows of a band") & = s^r \
     underbrace(PP(S "and" T "do not match in at least one row of the band"), = "do not match in one band") & = 1 - s^r \
     PP(S "and" T "do not match in any band") & = (1 - s^r)^b \
     underbrace(mr(PP(S "and" T "match in at least one band")), = (S, T) "pass the LSH filter") & = 1 - (1 - s^r)^b \
@@ -513,23 +513,23 @@ $ p(s) = 1 - (1 - s^r)^b $
   - *False Negatives (FN)*: truly similar pairs that do not share any bucket and are never compared, these are missed results.
 ]
 
-==== Choice of $b$ and $r$: the treshold $t$
+==== Choice of $b$ and $r$: the threshold $t$
 
 The choice of the number of bands $b$ and rows per band $r$ (such that $r b = k$) modifies how the filter behaves.
-We need to introduce the *treshold* $t$: the similarity level where a pair of documents has a *50% chance* of passing the LSH filter.
+We need to introduce the *threshold* $t$: the similarity level where a pair of documents has a *50% chance* of passing the LSH filter.
 
 #example[
-  With $t = 0.8$, documents that have a Jacccard similarity of $0.8$, pass the filter only $50%$ of the times.
-  This is _not good_ if we want to identify documents with 80% similarity, as only approximately half are individuated.
+  With $t = 0.8$, documents that have a Jaccard similarity of $0.8$, pass the filter only $50%$ of the time.
+  This is _not good_ if we want to identify documents with 80% similarity, as only approximately half are detected.
 ]
 
-To determine the exact value of the treshold, we can analyze the behaviour of function $p(s)$, the probability of passing the LSH.
+To determine the exact value of the threshold, we can analyze the behaviour of function $p(s)$, the probability of passing the LSH.
 The function $p(s) = 1 - (1-s^r)^b$ has a *sigmoid-like* shape: it starts flat near $0$, rises steeply in the middle, then flattens near $1$.
-The treshold, where the trend changes, is the *steepest* point of that function.
+The threshold, where the trend changes, is the *steepest* point of that function.
 
 // TODO: add sigmoid graph: Figure 3.8 on the book
 
-To find the steepest point, first compute the _first derivative_, that gives us the steepness of the funcion.
+To find the steepest point, first compute the _first derivative_, that gives us the steepness of the function.
 Then compute the _second derivative_ and _put it to zero_: the maximum point of the function (the maximum steepness)
 
 $
@@ -554,13 +554,13 @@ $ t approx (1/b)^(1/r) $
 
 This result can be used to determine the values of $b$ and $r$:
 - determine the similarity of documents that we want to make pass the filter
-- fix a treshold $t$ so that almost all of these documents pass the filter
-- adjust $r$ and $b$ to match that treshold
+- fix a threshold $t$ so that almost all of these documents pass the filter
+- adjust $r$ and $b$ to match that threshold
 
 #example[
   Suppose we have $k = 100$ hash functions and we want to identify documents with Jaccard similarity at least $0.8$.
 
-  By choosing a lower treshold $t$, we make sure pairs with 80% similarity pass the filter more often.
+  By choosing a lower threshold $t$, we make sure pairs with 80% similarity pass the filter more often.
   We can try with:
   $ b = 20, quad r = 5, quad t = (1/20)^(1/5) approx 0.55 $
 
@@ -586,7 +586,7 @@ This result can be used to determine the values of $b$ and $r$:
   + *Shingling*: preprocess (strip stop-words), build $k$-shingles - pick $k$ based on document type.
   + *Min-hashing*: build the signature matrix with $n$ hash functions.
   + *LSH*: divide the signature matrix into $b$ bands of $r$ rows each and hash each band's column into a bucket.
-    Tweak $b$ by exploiting the treshold value $t$.
+    Tweak $b$ by exploiting the threshold value $t$.
   + *Verification*: for each candidate pair (same bucket in at least one band), compute the actual Jaccard similarity and discard pairs below the wanted similarity.
 ]
 
@@ -610,7 +610,7 @@ For $d$ to be a proper metric, it must satisfy three properties:
 #warning[
   Not all the distance measures listed below are *Euclidean spaces*.
 
-  A property of Euclidean spaces simple to verify is that the _average_ of two points is still a _valid point_ in the space.
+  A property of Euclidean spaces that is simple to verify is that the _average_ of two points is still a _valid point_ in the space.
 
   #example[
     The average of two real points is still a real point, so that's an Euclidean space.
@@ -625,11 +625,11 @@ Distances that work on vectors of real numbers of size $d$: $X = RR^d$.
 These distances are called $L_p$-distances, with general formula:
 $ d(x, y) = (sum_(i=1)^d |x_i - y_i|^p)^(1/p) $
 
-The most famouse ones are the Manhattan distance, $L_1$-norm:
+The most famous ones are the Manhattan distance, $L_1$-norm:
 $ d(x, y) = sum_(i=1)^d |x_i - y_i| $
 
 the Euclidean distance, $L_2$-norm:
-$ d(x, y) = sqrt(sum_(i=1)^n (x_i - y_i)^2) $
+$ d(x, y) = sqrt(sum_(i=1)^d (x_i - y_i)^2) $
 
 and the $L_infinity$-norm, where only the dimension with largest difference matters:
 $ d(x, y) = max_i |x_i - y_i| $
@@ -646,7 +646,7 @@ The *Jaccard distance* is defined as the complement of Jaccard similarity:
 $ d(x, y) = 1 - J(x, y) $
 
 Proving the first two properties is pretty easy.
-The triangle disequality is a bit tricky.
+The triangle inequality is a bit tricky.
 
 #proof[
   Because of how the similarity is defined (Section #link-section(<sig-matrix-jaccard-sim>), #link-equation(<jaccard-sim-probability>)), we can rewrite the distance as:
@@ -656,8 +656,8 @@ The triangle disequality is a bit tricky.
     $H$ is a random hash function.
   ]
 
-  We can intoduce a thrid element $z$.
-  If the has of $x$ and $y$ are different, then at least one of the two is not equal to the hash of $z$:
+  We can introduce a third element $z$.
+  If the hash of $x$ and $y$ are different, then at least one of the two is not equal to the hash of $z$:
   $ H(x) != H(y) quad -> quad H(x) != H(z) space or space H(y) != H(z) $<jaccard-distance-z>
 
   We need two intermediate probability results.
@@ -682,7 +682,7 @@ The triangle disequality is a bit tricky.
 ==== Cosine Distance
 
 The *cosine distance* can be used on vectors with a common origin (directions in space).
-The resulting distance will be in the range 0 to 180 degress regardless of the dimension of the vector.
+The resulting distance will be in the range 0 to 180 degrees regardless of the dimension of the vector.
 
 Given two vectors $x$ and $y$, the cosine distance is defined exploiting the dot product and normalization:
 $ d(x, y) = theta_(x y) = arccos (x y)/(||x|| ||y||) $
@@ -712,7 +712,7 @@ It is defined as the minimum number of character operations (_insertion_, _delet
 
 ==== Hamming Distance
 
-Primarly used when the vectors are boolean, but it can be used on vectors of any component.
+Primarily used when the vectors are boolean, but it can be used on vectors of any component.
 The distance is defined as the number of components that differ.
 
 #example[
@@ -726,7 +726,7 @@ Recall that in LSH, two items are declared *candidate pairs* if they collide und
 
 #note[
   Some prerequisites are assumed on the hash functions of the family:
-  - _statistical indipendence_, it is possible to estimate the probability of more events by multiplying each event
+  - _statistical independence_, it is possible to estimate the probability of more events by multiplying each event
   - _efficiency_, faster than comparing each pair (faster than quadratic)
   - _combinable_ to build functions that are better at avoiding FP and FN
 ]
@@ -740,7 +740,7 @@ $
 $
 
 #informally[
-  The probabily of collision:
+  The probability of collision:
   - is higher than $p_1$ for pairs closer than $d_1$
   - is lower than $p_2$ for pairs more distant than $d_2$
 ]
@@ -759,7 +759,7 @@ $
                    & space -> space J(x, y) >= 1 - d_1 \
                    & space -> space PP(h(x) = h(y)) >= underbrace(1 - d_1, = p_1)
   $
-  The analogous holds for $d_2$, confirming that the minhash family is $(d_1, d_2, 1-d_1, 1-d_2)$-sensitive.
+  The same argument holds for $d_2$, confirming that the minhash family is $(d_1, d_2, 1-d_1, 1-d_2)$-sensitive.
 ]
 
 ==== $"AND"$-Construction and $"OR"$-Construction
@@ -781,7 +781,7 @@ The *AND construction* builds a new family $cal(F)_"AND"$, where each composite 
 $ f' = (f_(i_1), ..., f_(i_r)) quad "with each" f_(i_j) in cal(F) $
 
 Two items match under $f'$ only if *all* $r$ components agree:
-$ f'(x) = f'(y) space <--> space mr(forall j) space f_(i_j)(x) = f_(i_j)(y) j $
+$ f'(x) = f'(y) space <--> space mr(forall j) space f_(i_j)(x) = f_(i_j)(y) $
 
 By independence, when $d(x,y) <= d_1$ each factor is $>= p_1$, so the probability that *all* components agree is:
 $
@@ -832,7 +832,7 @@ For binary words of length $d$, pick a random coordinate $i$:
 $ forall i = 1, ..., d, quad f_(i)(x) = x_i $
 
 The probability that two words agree on a random coordinate is:
-$ PP(f_i(x) = f_i(y)) = 1 - h(x, y) / d $
+$ PP(f_i(x) = f_i(y)) = 1 - d_H(x, y) / d $
 
 This family is $(d_1, d_2, 1 - d_1/d, 1- d_2/d)$-sensitive.
 
