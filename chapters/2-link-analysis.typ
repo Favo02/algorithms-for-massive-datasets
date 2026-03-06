@@ -177,27 +177,27 @@ Once again, some formalization and algebraic concepts are needed to prove the co
 
 === Convergence of Random Surfing
 
-#theorem("Theorem")[
+#theorem[
   The random surfing process will *converge* on a CWS matrix.
   In other words, the vector $underline(v)$ will converge to a _non-null_ value.
 
   #proof[
     For this proof, we need a few intermediate results:
-    - the vector $underline(v)$ aligns with $lambda_1^t a_1 underline(e)_1$ (#link-teorema(<random-surfing-power-method>))
-    - the main _eigenvalue_ should be $lambda_1 = 1$ (#link-teorema(<random-surfing-principal-eigenvalue-1>))
-    - a CWS matrix admits $lambda = 1$ as eigenvalue (#link-teorema(<random-surfing-admits-lambda>))
-    - a matrix and its transpose share the same eigenvalues (#link-teorema(<random-surfing-transpose-eigenvalues>))
-    - the product of a matrix $A^k$ produces $lambda^k$ eigenvalue (#link-teorema(<random-surfing-power-eigenvalues>))
-    - given a RWS matrix $A$, $A^k$ is still RWS (#link-teorema(<random-surfing-ak-still-rws>))
-    - the principal eigenvalue of a CWS matrix is $lambda_1 = 1$ (#link-teorema(<random-surfing-lambda-1>))
+    - the vector $underline(v)$ aligns with $lambda_1^t a_1 underline(e)_1$ (#link-theorem(<random-surfing-power-method>))
+    - the main _eigenvalue_ should be $lambda_1 = 1$ (#link-theorem(<random-surfing-principal-eigenvalue-1>))
+    - a CWS matrix admits $lambda = 1$ as eigenvalue (#link-theorem(<random-surfing-admits-lambda>))
+    - a matrix and its transpose share the same eigenvalues (#link-theorem(<random-surfing-transpose-eigenvalues>))
+    - the product of a matrix $A^k$ produces $lambda^k$ eigenvalue (#link-theorem(<random-surfing-power-eigenvalues>))
+    - given a RWS matrix $A$, $A^k$ is still RWS (#link-theorem(<random-surfing-ak-still-rws>))
+    - the principal eigenvalue of a CWS matrix is $lambda_1 = 1$ (#link-theorem(<random-surfing-lambda-1>))
 
-    In particular, by #link-teorema(<random-surfing-principal-eigenvalue-1>) and #link-teorema(<random-surfing-lambda-1>), the vector converges, so the algorithm converges to a non-null vector of importances.
+    In particular, by #link-theorem(<random-surfing-principal-eigenvalue-1>) and #link-theorem(<random-surfing-lambda-1>), the vector converges, so the algorithm converges to a non-null vector of importances.
   ]
 ]
 
 _The intermediate results shown below are commented with some _informal_ reasoning on why we are pursuing that result._
 
-#theorem("Theorem (Power Method)")[
+#theorem(title: "Theorem (Power Method)")[
   When $t$ increases, the vector $underline(v)(t)$ *aligns* with the $lambda_1^t a_1 underline(e)_1$.
 
   #proof[
@@ -236,7 +236,7 @@ _The intermediate results shown below are commented with some _informal_ reasoni
 
 _When is that result useful? We need to calculate the importance of the pages, the vector must converge._
 
-#theorem("Theorem")[
+#theorem[
   The algorithm will be _useful_ only when the principal eigenvalue of the matrix $A$ is $lambda_1 = 1$.
 
   #proof[
@@ -258,7 +258,7 @@ _When is that result useful? We need to calculate the importance of the pages, t
 
 _Does the matrix $A$ even admit $lambda = 1$ as eigenvalue?_
 
-#theorem("Theorem")[
+#theorem[
   A column-wise stochastic (CWS) matrix $A$ admits $lambda = 1$ as an eigenvalue.
 
   #proof[
@@ -279,20 +279,20 @@ _Does the matrix $A$ even admit $lambda = 1$ as eigenvalue?_
 _We just showed that $lambda = 1$ is an eigenvalue for $A$, but is it the principal one?
 For this we need two more intermediate results on matrices._
 
-#theorem("Lemma")[
+#theorem(title: "Lemma")[
   A matrix $A$ and its transpose $A^T$ share the same *eigenvalues* (not eigenvectors).
   $ A underline(w) = lambda underline(w) $
   $ A^T underline(u) = lambda underline(u) $
 ] <random-surfing-transpose-eigenvalues>
 
-#theorem("Lemma")[
+#theorem(title: "Lemma")[
   If $underline(w)$ is an eigenvector of matrix $A$ with eigenvalue $lambda$, then:
   $ A underline(w) = lambda underline(w) $
   $ A^k underline(w) = lambda^k underline(w) $
   for any positive integer $k$.
 ] <random-surfing-power-eigenvalues>
 
-#theorem("Theorem")[
+#theorem[
   If a matrix $A$ is row-wise stochastic (RWS), then $A^k$ is also RWS for any positive integer $k$.
 
   #note[
@@ -330,7 +330,7 @@ For this we need two more intermediate results on matrices._
 
 _Now we can prove that $lambda = 1$ is the _principal_ eigenvalue for a CWS matrix._
 
-#theorem("Theorem")[
+#theorem[
   For a column-wise stochastic (CWS) matrix $A$, the eigenvalue $lambda = 1$ is the principal eigenvalue.
 
   #proof[
@@ -338,11 +338,11 @@ _Now we can prove that $lambda = 1$ is the _principal_ eigenvalue for a CWS matr
     $ A underline(u) = lambda underline(u) $
 
     Consider $B = A^T$, since $A$ is CWS, $B$ is RWS.
-    By #link-teorema(<random-surfing-transpose-eigenvalues>), they share the same eigenvalue:
+    By #link-theorem(<random-surfing-transpose-eigenvalues>), they share the same eigenvalue:
     $ B underline(w) = lambda underline(w) $
 
-    Consider $C = B^k$, by #link-teorema(<random-surfing-ak-still-rws>) is still a RWS matrix.
-    By #link-teorema(<random-surfing-power-eigenvalues>), for any positive integer $k$:
+    Consider $C = B^k$, by #link-theorem(<random-surfing-ak-still-rws>) is still a RWS matrix.
+    By #link-theorem(<random-surfing-power-eigenvalues>), for any positive integer $k$:
     $ B^k underline(w) = C underline(w) = lambda^k underline(w) $
 
     Let $w_max = max(w_1, ..., w_n)$.
@@ -385,15 +385,20 @@ The web resembles a _bowtie_, with the following main components:
   {
     set text(size: 8pt)
 
-    align(center, cetz.canvas(
-      {
-        import cetz.draw: *
-        
-        stroke((thickness: 0.5pt))
-        // set-style(stroke: none)
+    align(center, cetz.canvas({
+      import cetz.draw: *
 
-        group(name: "bowtie", {
-        content((0,0), align(center, [Strongly #linebreak() Connected #linebreak() Component]), name: "SCC", frame: "circle", padding: 8pt)
+      stroke((thickness: 0.5pt))
+      // set-style(stroke: none)
+
+      group(name: "bowtie", {
+        content(
+          (0, 0),
+          align(center, [Strongly #linebreak() Connected #linebreak() Component]),
+          name: "SCC",
+          frame: "circle",
+          padding: 8pt,
+        )
 
         group(name: "bowtie-left", {
           line("SCC.north-west", (-3.5, 1.5), name: "bt_l_n")
@@ -411,18 +416,18 @@ The web resembles a _bowtie_, with the following main components:
           ("bowtie-left.n_start", 50%, "bowtie-left.n_end"),
           (rel: (-0.5, 2)),
           (rel: (0.5, 2)),
-          name: "curve"
+          name: "curve",
         )
 
         line((rel: (0.2, -2), to: "curve.mid"), (rel: (0, -0.5), to: "curve.mid"), mark: (end: ">"))
         content((rel: (0, 0.5), to: "curve.mid"), [Tendrils Out])
-        
+
         bezier(
           ("bowtie-left.s_start", 70%, "bowtie-left.s_end"),
           ("bowtie-left.s_start", 50%, "bowtie-left.s_end"),
           (rel: (-0.5, -2)),
           (rel: (0.5, -2)),
-          name: "curve"
+          name: "curve",
         )
 
         line((rel: (0.2, 2), to: "curve.mid"), (rel: (0, 0.5), to: "curve.mid"), mark: (end: ">"))
@@ -446,7 +451,7 @@ The web resembles a _bowtie_, with the following main components:
           ("bowtie-right.n_start", 50%, "bowtie-right.n_end"),
           (rel: (0.5, 2)),
           (rel: (-0.5, 2)),
-          name: "curve"
+          name: "curve",
         )
 
         line((rel: (-0.2, -2), to: "curve.mid"), (rel: (0, -0.5), to: "curve.mid"), mark: (start: ">"))
@@ -457,26 +462,40 @@ The web resembles a _bowtie_, with the following main components:
           ("bowtie-right.s_start", 50%, "bowtie-right.s_end"),
           (rel: (0.5, -2)),
           (rel: (-0.5, -2)),
-          name: "curve"
+          name: "curve",
         )
 
         line((rel: (-0.2, 2), to: "curve.mid"), (rel: (0, 0.5), to: "curve.mid"), mark: (start: ">"))
-        arc-through(("bowtie-left.s_start", 45%, "bowtie-left.s_end"), (0,-2.5), ("bowtie-right.s_start", 45%, "bowtie-right.s_end"), name: "tube_lower")
-        arc-through(("bowtie-left.s_start", 37.5%, "bowtie-left.s_end"), (0,-2.25), ("bowtie-right.s_start", 37.5%, "bowtie-right.s_end"), stroke: (dash: "dotted"), mark: (end: ">"))
-        arc-through(("bowtie-left.s_start", 30%, "bowtie-left.s_end"), (0,-2), ("bowtie-right.s_start", 30%, "bowtie-right.s_end"))
-        content((rel: (0,-0.5), to: "tube_lower.center"), [Tubes])
+        arc-through(
+          ("bowtie-left.s_start", 45%, "bowtie-left.s_end"),
+          (0, -2.5),
+          ("bowtie-right.s_start", 45%, "bowtie-right.s_end"),
+          name: "tube_lower",
+        )
+        arc-through(
+          ("bowtie-left.s_start", 37.5%, "bowtie-left.s_end"),
+          (0, -2.25),
+          ("bowtie-right.s_start", 37.5%, "bowtie-right.s_end"),
+          stroke: (dash: "dotted"),
+          mark: (end: ">"),
+        )
+        arc-through(
+          ("bowtie-left.s_start", 30%, "bowtie-left.s_end"),
+          (0, -2),
+          ("bowtie-right.s_start", 30%, "bowtie-right.s_end"),
+        )
+        content((rel: (0, -0.5), to: "tube_lower.center"), [Tubes])
 
         content("bowtie-right.center", align(center, [Out #linebreak() Component]))
       })
 
 
-        circle((rel: (-1.5, -1), to: "bowtie.south"), radius: (1, 0.5))
-        circle((rel: (1.5, -0.75), to: "bowtie.south"), radius: (1, 0.5))
-        circle((rel: (-0.5, -2.4), to: "bowtie.south"), radius: (1, 0.5))
+      circle((rel: (-1.5, -1), to: "bowtie.south"), radius: (1, 0.5))
+      circle((rel: (1.5, -0.75), to: "bowtie.south"), radius: (1, 0.5))
+      circle((rel: (-0.5, -2.4), to: "bowtie.south"), radius: (1, 0.5))
 
-        content((rel: (3, -1.75), to: "bowtie.south"), [Disconnected #linebreak() Components])
-      })
-    )
+      content((rel: (3, -1.75), to: "bowtie.south"), [Disconnected #linebreak() Components])
+    }))
   },
   caption: [Structure of the web],
 )
@@ -599,59 +618,58 @@ This creates a closed loop that concentrates PageRank in the target page.
     import cetz.draw: *
     set text(size: 8pt)
     let circle_withcircle(accPos, name, text, N: 10, pad: 1, rad: (1, 4), body: {}) = {
-        // let accPos = center
-        let (rx, ry) = rad
-        // let N = 10
-        // let pad = 1
-        circle(accPos, radius: (rx, ry), name: name)
-        content((rel: (0, -0.25), to: name + ".south"), text)
+      // let accPos = center
+      let (rx, ry) = rad
+      // let N = 10
+      // let pad = 1
+      circle(accPos, radius: (rx, ry), name: name)
+      content((rel: (0, -0.25), to: name + ".south"), text)
 
-        let total-height = 2 * ry
-        let available-height = total-height - ((N + 1) * pad)
-        let r-small = available-height / N / 2
+      let total-height = 2 * ry
+      let available-height = total-height - ((N + 1) * pad)
+      let r-small = available-height / N / 2
 
-        let y-start = ry - pad - r-small
+      let y-start = ry - pad - r-small
 
-        for i in range(N) {
-          let step = 2 * r-small + pad
-          let y-pos = y-start - (i * step)
-          let curPos = (rel: (0, y-pos), to: accPos)
-          circle(
-            curPos, 
-            radius: r-small, 
-            // fill: blue.lighten(50%),
-            // stroke: blue 
-            name: "circle_" + name + "_" + str(i)
-          )
-          
-          // anchor("circle_" + name + "_" + str(i), curPos)
-        }
+      for i in range(N) {
+        let step = 2 * r-small + pad
+        let y-pos = y-start - (i * step)
+        let curPos = (rel: (0, y-pos), to: accPos)
+        circle(
+          curPos,
+          radius: r-small,
+          // fill: blue.lighten(50%),
+          // stroke: blue
+          name: "circle_" + name + "_" + str(i),
+        )
 
-        body
-    }
-    align(center, cetz.canvas(
-      {
-
-        stroke((thickness: 0.5pt))
-        circle((0, 0), radius: (1, 4), name: "inac")
-        content((rel: (0, -0.25), to: "inac.south"), [Inaccessible Pages])
-
-        circle_withcircle((rel: (3, 0), to: "inac.east"), "acc", [Accessible Pages], N: 7, pad: 0.5)
-
-        circle_withcircle((rel: (3, 0), to: "acc.east"), "own", [Own Pages], rad: (2, 4),  body: {circle((rel: (-1.25, 0), to: "own.center"), radius: 8pt, name:"target")})
-        for i in range(7) {
-          if calc.rem(i, 2) == 0 {
-            line("circle_acc_" + str(i), "target", mark: (end: ">"))
-          }
-        }
-
-        for i in range(10) {
-          line("circle_own_" + str(i), "target", mark: (start: ">", end: ">"))
-        }
-        content((rel: (-0.5, 3), to: "own.west"), [Target Page], name: "target_text")
-        line("target_text.south", "target", mark: (end: ">"), stroke: (dash: "dashed"))
+        // anchor("circle_" + name + "_" + str(i), curPos)
       }
-    ))
+
+      body
+    }
+    align(center, cetz.canvas({
+      stroke((thickness: 0.5pt))
+      circle((0, 0), radius: (1, 4), name: "inac")
+      content((rel: (0, -0.25), to: "inac.south"), [Inaccessible Pages])
+
+      circle_withcircle((rel: (3, 0), to: "inac.east"), "acc", [Accessible Pages], N: 7, pad: 0.5)
+
+      circle_withcircle((rel: (3, 0), to: "acc.east"), "own", [Own Pages], rad: (2, 4), body: {
+        circle((rel: (-1.25, 0), to: "own.center"), radius: 8pt, name: "target")
+      })
+      for i in range(7) {
+        if calc.rem(i, 2) == 0 {
+          line("circle_acc_" + str(i), "target", mark: (end: ">"))
+        }
+      }
+
+      for i in range(10) {
+        line("circle_own_" + str(i), "target", mark: (start: ">", end: ">"))
+      }
+      content((rel: (-0.5, 3), to: "own.west"), [Target Page], name: "target_text")
+      line("target_text.south", "target", mark: (end: ">"), stroke: (dash: "dashed"))
+    }))
   },
   caption: [Structure of a Spam Farm],
 )
