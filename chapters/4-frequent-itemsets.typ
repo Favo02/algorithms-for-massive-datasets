@@ -22,7 +22,7 @@ Patterns often emerge in "baskets" (the set of items a customer buys in a single
 
 To transform these observations into actionable knowledge, we define an *Association Rule*.
 
-#theorem("Association Rule")[
+#theorem(title: "Association Rule")[
   The form of an association rule is:
 
   $ underbrace(A, "set of items") -> underbrace(b, "item") $
@@ -37,7 +37,7 @@ To transform these observations into actionable knowledge, we define an *Associa
 
 To formalize the notion of "likely", we first define the *support* of an itemset.
 
-#theorem("Support")[
+#theorem(title: "Support")[
   The *support* of an itemset is the count of baskets that contain all items in it. For a rule $A -> b$, we define:
   $ "Supp"(A union {b}) = |{B in cal(B) : A union {b} subset.eq B}| $
 
@@ -51,7 +51,7 @@ To formalize the notion of "likely", we first define the *support* of an itemset
 
 Now we can define the *confidence* of an association rule $A -> b$.
 
-#theorem("Confidence")[
+#theorem(title: "Confidence")[
   The *confidence* of a rule $A -> b$ is the ratio:
   $ "Conf"(A -> b) = ("Supp"(A union {b}))/("Supp"(A)) $
 ]
@@ -77,7 +77,7 @@ When the ratio is closer to $1$, we are pretty confident that the rule is good.
   So we need another metric.
 ]
 
-#theorem("Interest")[
+#theorem(title: "Interest")[
   The *interest* of a rule $A -> b$ is defined as the difference between its confidence and its expected probability based on the overall frequency of $b$.
 
   $ "Interest"(A -> b) = "Confidence"(A -> b) - "Supp"({b})/("number of baskets") $
@@ -92,7 +92,7 @@ When the ratio is closer to $1$, we are pretty confident that the rule is good.
 
 Before generating rules, we must find *Frequent Itemsets*.
 
-#theorem("Frequent Itemset")[
+#theorem(title: "Frequent Itemset")[
   An itemset $I$ is "frequent" if its support exceeds a chosen threshold $s$:
   $ "Supp"(I)>=s $
 ]
@@ -194,7 +194,7 @@ meaning also $A$ is:
 $ "supp"(A) >= s $
 meaning $A$ is *frequent*.
 
-#theorem("Theorem")[
+#theorem(title: "Theorem")[
   First order logic theorem:
   $ (A -> B) <--> (not B -> not A) $
 ]
@@ -472,7 +472,7 @@ The SON algorithm provides a way to use sampling *without* producing False Negat
 It is obvious that we cannot have FP, as we explicitly removed them in the verification step.
 But what about FN?
 
-#theorem("No False Negatives in SON")[
+#theorem(title: "No False Negatives in SON")[
   If an itemset $I$ is frequent in the whole dataset ($"Supp"(I) >= s$), then there exists at least one chunk $C_i$ where the support of $I$ in that chunk is at least $p s$.
 ]
 
@@ -531,7 +531,7 @@ But on certain inputs, it cannot calculate a result (it does not crash or goes i
 
 Then, on the candidate sets we compute a *negative border*: a group of sets that are *not* frequent, but whose immediate subsets are frequent in the sample.
 
-#theorem("Negative Border")[
+#theorem(title: "Negative Border")[
   An itemset $I$ is in the Negative Border if:
   1. $I$ is *not* frequent in the sample.
   2. *All* immediate subsets of $I$ (sets created by removing exactly one element) *are* frequent in the sample.
@@ -573,7 +573,7 @@ After the full scan:
   If Toivonen's algorithm actually terminates and provides an output, we are mathematically guaranteed that there are no false negatives. Let's prove why.
 ]
 
-#theorem("No False Negatives in Toivonen's Output")[
+#theorem(title: "No False Negatives in Toivonen's Output")[
   If Toivonen's algorithm completes without requiring a second pass over the dataset, the output contains all true frequent itemsets (no false negatives).
 ]
 
