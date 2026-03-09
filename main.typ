@@ -41,6 +41,7 @@
 #show: part.with("Theory")
 #include "chapters/1-hdfs-mapreduce.typ"
 #include "chapters/2-link-analysis.typ"
+#include "chapters/3-similarity.typ"
 
 #show: part.with("Implementation", chapters-numbering: "A.1.", reset-chapters: true)
 
