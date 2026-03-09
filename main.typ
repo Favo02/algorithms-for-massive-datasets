@@ -43,6 +43,8 @@
 #include "chapters/2-link-analysis.typ"
 #include "chapters/3-similarity.typ"
 
+#include "chapters/4-frequent-itemsets.typ"
+
 #show: part.with("Implementation", chapters-numbering: "A.1.", reset-chapters: true)
 
 #include "chapters/a-spark.typ"
