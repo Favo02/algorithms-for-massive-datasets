@@ -39,7 +39,7 @@ To formalize the notion of "likely", we first define the support of an itemset.
   $ "Supp"(X) = |{B in cal(B) : forall x in X, x in B}| $
   $ "Supp"(X) = |{B in cal(B) : X subset.eq B}| $
 
-  For an associaton rule $A -> b$, we define:
+  For an association rule $A -> b$, we define:
   $ "Supp"(A union {b}) = |{B in cal(B) : A union {b} subset.eq B}| $
   where $cal(B)$ is the set of all baskets.
 
@@ -57,7 +57,6 @@ To formalize the notion of "likely", we first define the support of an itemset.
     + {Candy}
 
     The support for various association rules is:
-    For the association rule :
     - ${"Torch"} -> "Lollipop" quad = quad "Supp"({"Torch", "Lollipop"}) = 3$
     - ${"Torch", "Batteries"} -> "Lollipop" quad = quad "Supp"({"Torch", "Batteries", "Lollipop"}) = 2$
   ]
@@ -145,7 +144,7 @@ While quadratic complexity is significantly better than exponential, it is still
 
 #example[
   For a marketing campaign, we don't need all possible itemsets, but a few pairs of interesting items are enough.
-  But this is a very specific use case, most of the times, pairs are not enough.
+  But this is a very specific use case, most of the time, pairs are not enough.
 ]
 
 #example[
@@ -158,7 +157,7 @@ While quadratic complexity is significantly better than exponential, it is still
 ]
 
 We want to find *all* frequent sets exactly.
-To improve memory performances without losing accuracy, we need to *filter* the itemsets we track.
+To improve memory performance without losing accuracy, we need to *filter* the itemsets we track.
 
 This leads us to a family of algorithms designed to prune the search space, starting with the fundamental Apriori Algorithm.
 
@@ -185,7 +184,7 @@ As we scan the baskets, we build these dynamically:
 - If it exists, increment the counter.
 
 #note[
-  These structures are in the order of millions, so in the order of megabytes.
+  These structures are on the order of millions, so on the order of megabytes.
   We have plenty of free RAM for the second pass.
 ]
 
@@ -312,17 +311,17 @@ Does it always work? No!
   But we have *no guarantee* that this filtering actually reduces enough the number of pairs processed.
 ]
 
-So, if the algorithm works, we have a correct solution, but the algorithm could crash because of the amount of RAM required is too much.
+So, if the algorithm works, we have a correct solution, but the algorithm could crash because the amount of RAM required is too much.
 
 #example[
-  We could have items that are frequent alone but are never bought together, so we could have a lot of singleton item to consider, but a lot of $0$ entries in the triangular matrix.
+  We could have items that are frequent alone but are never bought together, so we could have a lot of singleton items to consider, but a lot of $0$ entries in the triangular matrix.
 ]
 
 We need something *robust to sparseness*.
 
 === Hash Table for Triples
 
-We have already seen something similar during PageRank, instead of storing a matrix we store a *triple* $(tilde(i), tilde(j), "counter")$, where triplets with counter $0$ are discarded.
+We have already seen something similar during PageRank: instead of storing a matrix we store a *triple* $(tilde(i), tilde(j), "counter")$, where triplets with counter $0$ are discarded.
 
 With this representation, we have to find the triple in memory (if it exists) and modify it.
 We don't have *immediate* access anymore.
@@ -351,7 +350,7 @@ Space comparison:
 - Hash table: 3+ integers per each entry (the space for the indices, pointers, and the hashmap structure)
 
 The best approach depends on the *sparseness* of the matrix.
-If the matrix has less than $1/3$ of empty entries, then the triangular matrix is preferable.
+If the matrix has less than $2/3$ of empty entries, then the triangular matrix is preferable.
 
 #example[
   $n = 100000$ items, $b = 10000000$ baskets (10 items each).
@@ -406,7 +405,7 @@ Are we sure that it always terminates?
     Hash tables allocate memory dynamically, and we might exhaust RAM while appending new nodes to collision lists.
 ]
 
-We can use other algorithms, based on Apriori algorithm that perform more aggressive filtering.
+We can use other algorithms, based on the Apriori algorithm, that perform more aggressive filtering.
 
 == Park-Chen-Yu Algorithm (PCY)
 
@@ -417,12 +416,12 @@ The idea is to exploit the free memory at the end of the first phase (when we st
   This uses very little RAM.
   Most of the memory is idle, we should leverage that free memory.
 
-  The idea is to keep some more information during the first phase, so that we can prune even more items.
+  The idea is to keep some more information during the first phase, so that we can prune even more candidate pairs.
 ]
 
 === PCY Pass 1
 
-We utilize the idle memory to maintain an *hash table* of pair counts alongside the item counts.
+We utilize the idle memory to maintain a *hash table* of pair counts alongside the item counts.
 We see the free memory as a long vector of integers (all starting from $0$) and use a hash function $h$ that hashes a pair of items $(i, j)$ into a position in the integers array.
 
 The first two structures are constructed as for the Apriori algorithm, but during the scan we also *generate all* possible pairs for the items in that basket.
@@ -431,7 +430,7 @@ $ h(i, j) quad forall i, j in B quad forall B in "baskets" $
 
 #warning[
   Different pairs could point to the same cell as collisions exist.
-  This does not replace pass 2
+  This does not replace pass 2.
 ]
 
 === Between Pass 1 and Pass 2
@@ -454,7 +453,7 @@ We reclaim $31/32$ of the memory to use for the actual counters in Pass 2.
 
 === PCY Pass 2
 
-Now we proceed the same way as Apriori algorithm, with one further constraint.
+Now we proceed the same way as the Apriori algorithm, with one further constraint.
 Pair $(i, j)$ is counted only if:
 1. $i$ and $j$ are both frequent singletons
 2. The bit corresponding to $h(i, j)$ is 1
@@ -684,7 +683,7 @@ Instead of using only one vector of integers with one hash function, we divide t
 
 Up to this point, we assumed we had to process the entire dataset (stored on a hard disk). However, strict exactness might be traded for efficiency by working with a *sample* of the baskets in RAM.
 
-If we could store all the baskets in main memory, then we would be able to compute the frequency of each pairs, triple or sets of any cardinality by just doing some scans of the Apriori algorithm.
+If we could store all the baskets in main memory, then we would be able to compute the frequency of each pair, triple, or set of any cardinality by just doing some scans of the Apriori algorithm.
 
 Sampling the baskets and putting the sample in memory, we have no guarantee that the algorithm is exact anymore.
 This can be seen as a *predictor*: it outputs some sets which it expects to be frequent.
@@ -708,9 +707,9 @@ We have the two classical errors:
 To minimize variance, the sample must be *truly random*.
 Simply taking the "first $N$ rows" of a file is dangerous because files often have temporal or logical ordering (e.g., Christmas sales grouped together), which would bias the sample.
 
-A simple effective way for sampling is to just select each basket with a certain probability.
+A simple, effective way to sample is to select each basket with a certain probability.
 
-Once the sample is in RAM, we can run Apriori algorithm, given that we have enough free space to store the auxiliary data structures.
+Once the sample is in RAM, we can run the Apriori algorithm, given that we have enough free space to store the auxiliary data structures.
 
 == Savasere-Omiecinski-Navathe Algorithm (SON)
 
@@ -720,7 +719,7 @@ It is an exact algorithm that lends itself perfectly to parallelization (using M
 It consists of four main phases:
 1. *Partitioning:* We virtually divide the baskets file into $k$ chunks of equal size.
   Each chunk represents a "sample" of proportion $p = 1/k$.
-2. *Local Processing:* Each chunk is brought into RAM and the Apriori algorithm is run with a scaled threshold $p s$ (with $s$ being the original treshold).
+2. *Local Processing:* Each chunk is brought into RAM and the Apriori algorithm is run with a scaled threshold $p s$ (with $s$ being the original threshold).
 3. *Union of Candidates:* An itemset is a *global candidate* if it is frequent in *at least one* chunk.
 4. *Verification:* Scan the entire dataset to count the support of these global candidates and filter out False Positives.
 
@@ -772,16 +771,16 @@ In the case that the basket file is so big that it cannot even fit on the disk, 
   $ ((C, 1), "chunk") --> #rect[2nd MAP] --> (C, v) $
 
   The reduce receives the frequency of a candidate set from all chunks, summing them up.
-  The candidate set is emitted only if it exceeds the treshold:
+  The candidate set is emitted only if it exceeds the threshold:
   $ (C, (v_1, v_2, ...)) --> #rect[2nd REDUCE] --> (C, sum v_i) "if" sum_i v_i >= s $
 
 == Toivonen's Algorithm
 
-Sampling algorithms that gives *exact* results.
+A sampling algorithm that gives *exact* results.
 But on certain inputs, it cannot calculate a result (it does not crash or go into an infinite loop, it just stops without producing a result).
 
 Setup of the algorithm:
-+ It brings in RAM a basket sample of relative size $p$.
++ It brings a basket sample of relative size $p$ into RAM.
 + It runs Apriori algorithm (or a variant) with threshold $p s alpha$, where $0 < alpha < 1$.
 
 #note[
@@ -798,7 +797,7 @@ Formally:
   2. *All* immediate subsets of $I$ (sets created by removing exactly one element) *are* frequent in the sample.
 
   #note[
-    Immediate subset are the subsets obtained by removing exactly one element from the original set.
+    Immediate subsets are the subsets obtained by removing exactly one element from the original set.
   ]
 
   #warning[
