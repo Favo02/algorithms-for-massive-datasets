@@ -662,20 +662,20 @@ The triangle inequality is a bit tricky.
 
   We need two intermediate probability results.
 
-  #theorem("Lemma")[
+  #theorem(title: "Lemma")[
     If an event implies another one, then its probability is smaller.
     $ A -> B quad PP(A) <= PP(B) $
   ]<event-implication-smaller>
 
-  #theorem("Lemma")[
+  #theorem(title: "Lemma")[
     The probability of the union of the events is, at most, their sum.
     $ PP(A union B) <= PP(A) + PP(B) $
   ]<probability-union-smaller-sum>
 
   From #link-equation(<jaccard-distance-z>):
   $
-    PP(H(x) != H(y)) space &<= space PP(H(x) != H(z) union H(y) != H(z)) space &#comment("applying " + link-teorema(<event-implication-smaller>)) \
-    PP(H(x) != H(y)) space & <= space PP(H(x) != H(z)) + PP(H(y) != H(z)) space qed space &#comment("applying " + link-teorema(<probability-union-smaller-sum>))
+    PP(H(x) != H(y)) space &<= space PP(H(x) != H(z) union H(y) != H(z)) space &#comment("applying " + link-theorem(<event-implication-smaller>)) \
+    PP(H(x) != H(y)) space & <= space PP(H(x) != H(z)) + PP(H(y) != H(z)) space qed space &#comment("applying " + link-theorem(<probability-union-smaller-sum>))
   $
 ]
 
