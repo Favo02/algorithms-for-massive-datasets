@@ -42,8 +42,10 @@
 #include "chapters/1-hdfs-mapreduce.typ"
 #include "chapters/2-link-analysis.typ"
 #include "chapters/3-similarity.typ"
-
 #include "chapters/4-frequent-itemsets.typ"
+
+
+#include "chapters/11-dimensionality-reduction.typ"
 
 #show: part.with("Implementation", chapters-numbering: "A.1.", reset-chapters: true)
 
