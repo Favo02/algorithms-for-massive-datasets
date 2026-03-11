@@ -59,7 +59,7 @@ We typically use *regression tree stumps*, which are the simplest regression tre
   The most important thing is that these must be *simple* models.
 ]
 
-- *Splitting Criterion:* We choose the split for our regression stump by optimizing a specific metric, typically minimizing the variance of the residuals in the resulting child nodes.
+- *Splitting Criterion:* We choose the split for our regression stump by optimizing a specific impurity measure, typically minimizing the variance (Squared Error) of the residuals in the resulting child nodes.
 
 - *Aggregation:* Each time we append a new function $Delta_i$, every data point is associated with its current residual. The final model is an agglomeration that adapts precisely to the variability of the dataset.
 
@@ -79,16 +79,14 @@ $ L(x, y, F_m) = "MSE"(x, y, F_m) = 1/n sum_(i=1)^n (y_i - F_m (x_i))^2 $
 === Incremental Shrinkage & Hyperparameters
 
 To further prevent overfitting, we do not add the full prediction of the new tree.
-We introduce a *learning rate* ($eta$), also known as _shrinkage_.
+We introduce a *learning rate* ($eta > 0$), also known as _shrinkage_.
 
 $ F_m (x) = F_(m-1) (x) + eta dot Delta_m (x) $
 
-This introduces several *Hyperparameters* that must be tuned (usually via Validation Sets or Cross-Validation):
+This introduces several *Hyperparameters* that must be tuned (usually evaluating our loss function over a grid via Validation Sets or Cross-Validation):
 
 1. The number of functions (trees) to add ($M$).
-
 2. The learning rate ($eta$).
-
 3. The depth of the trees (if we use more than just stumps).
 
 === Stochastic Gradient Boosting
@@ -98,121 +96,65 @@ This introduces several *Hyperparameters* that must be tuned (usually via Valida
   We can't use the full dataset every time, otherwise we would just get $M$ identical copies of the same tree!
 ]
 
-To solve this and make the ensemble effective, we must introduce *stochasticity* (randomness) through *subsampling*.
+To solve this and make the ensemble effective, we must introduce *stochasticity* (randomness).
+We don't use all data at each iteration; instead, we perform *aggressive subsampling* (e.g., using only 50% of the data often proves effective). We can:
 
-- We train each weak learner on a random subsample of the dataset (e.g., 80% of the rows) or a random subset of the features.
+- Subsample *rows* (observations) before creating each tree.
+- Subsample *columns* (features) before creating each tree.
+- Subsample *columns* before considering each individual split within the tree.
 
-- This ensures that each weak worker is specialized on a slightly different perspective of the data. Summing these specialized workers yields a much stronger and more generalized overall prediction.
+This ensures that each weak worker is highly specialized on a slightly different perspective of the data. Summing these specialized workers yields a much stronger overall prediction.
 
-=== The "Gradient" in Gradient Boosting
+=== The "Gradient" in Gradient Boosting: Mathematical Formulation
 
 #informally[
   Why is this technique called *Gradient* Boosting?
 ]
-It relates to the loss function.
-When tracking the error using MSE, focusing on large residuals can lead to overfitting outliers. If we want to regularize against this, we might track only the *sign* of the error (+1 or -1) to know the direction we need to move. 
 
-By changing our approach this way, we are effectively switching our loss evaluation from MSE to *Mean Absolute Error (MAE)*. 
-Mathematically, the residual we compute at each step is actually the *negative gradient* of the chosen loss function (MSE, MAE, etc.) with respect to the model's predictions.
-Therefore, training a tree on the residuals is equivalent to performing *Gradient Descent in function space*.
+At each iteration of gradient boosting:
+$ F_m (x) = F_(m-1) (x) + eta Delta_m (x) $
 
-== Dimensionality Reduction & PCA
+Let $hat(y)_m := F_m (x)$ be our prediction at step $m$.
+We can rewrite the update rule as:
+$ hat(y)_m = hat(y)_(m-1) + eta r_(m-1) $
+where $r_(m-1)$ denotes the target residuals that we approximate via $Delta_m (x)$.
 
-Dimensionality reduction maps data from a high-dimensional Data Space ($RR^d$) to a lower-dimensional Feature Space ($RR^(d')$ where $d' < d$).
-The most standard feature engineering approach to achieve this is *Principal Component Analysis (PCA)*.
+Now, compare this update rule with the standard *Gradient Descent* optimization step:
+$ x_t = x_(t-1) - eta nabla L(x_(t-1)) $
 
-=== The Variance-Covariance Matrix
-Let's assume we have a dataset with $N$ elements, where each data point is a vector in $RR^d$. We stack these row vectors vertically to create an $N times d$ matrix $M$:
+This implies that our residual $r_t$ is directly proportional to the negative gradient of the loss function:
 
-$ M = mat(
-  (x^1)^T;
-  (x^2)^T;
-  dots.v;
-  (x^N)^T
-) $
+$ r_t (x) = - nabla L(x_t) $
 
-We compute the variance-covariance matrix by multiplying $M^T M$, which results in a $d times d$ square matrix. The element at position $(i,j)$ represents the covariance between feature $i$ and feature $j$:
-
-$ (M^T M)_(i,j) = sum_(k=1)^N x_k^i x_k^j $
-
-=== The Principal Eigenvector & Geometric Meaning
-
-Since $M^T M$ is a symmetric square matrix, we can compute its eigenvectors ($e$) and eigenvalues ($lambda$).
-Let's focus on the principal eigenvector $e_1$ (associated with the largest eigenvalue $lambda_1$):
-
-$ M^T M e_1 = lambda_1 e_1 $
-
-*Geometric meaning:* Imagine your data is scattered roughly along a 45-degree line in a 2D space. The principal eigenvector $e_1$ identifies the specific direction in that space that *maximizes the variance* of your projected data. 
-Outside of this primary direction, the variance is very small and can often be treated as noise. By describing the data purely along this simple direction, we successfully mold and compress the dimensionality of our space.
-
-=== The Power Method
-
-How do we efficiently find this principal eigenvector starting from the data points? We use an iterative numerical algorithm called the *Power Method*:
-
-```pseudocode
- Initialize a random non-zero vector $v_0$
- Set $t = 0$
- while not converged:
-   $v_(t+1) = M^T M v_t$
-   $v_(t+1) = v_(t+1) \/ norm(v_(t+1))$ 
-   $t = t + 1$
-```
-
-This process guarantees convergence to the principal eigenvector $e_1$.
-
-=== Matrix Deflation (Finding Subsequent Eigenvectors)
-
-#informally[
-  Once we have found the first pair $(lambda_1, e_1)$, how do we find the second highest eigenvalue and its eigenvector?
-]
-
-We use a mathematical trick called *Matrix Deflation*.
-We construct a new matrix $A^*$:
-
-$ A^* = M^T M - lambda_1 e_1 e_1^T $
-
-Let's prove why this works.
-*What happens if we multiply $A^*$ by our first eigenvector $e_1$?*
-
-$ A^* e_1 = (M^T M - lambda_1 e_1 e_1^T) e_1 $
-$ A^* e_1 = M^T M e_1 - lambda_1 (e_1 e_1^T) e_1 $
-
-Because matrix multiplication is associative, we can rewrite $(e_1 e_1^T) e_1$ as $e_1 (e_1^T e_1)$.
-Since $e_1$ is a normalized unit vector, its squared norm is 1 ($e_1^T e_1 = 1$).
-Furthermore, we know $M^T M e_1 = lambda_1 e_1$.
-
-$ A^* e_1 = lambda_1 e_1 - lambda_1 e_1 (1) = 0 $
-
-The result is the null vector.
-This means $e_1$ has been "deflated" and is now associated with an eigenvalue of $0$.
-
-*What happens if we multiply $A^*$ by any other eigenvector $e_i$ (where $i > 1$)?*
-
-$ A^* e_i = M^T M e_i - lambda_1 e_1 (e_1^T e_i) $
-
-Because eigenvectors of a symmetric matrix are orthogonal to each other, the dot product $e_1^T e_i = 0$.
-
-$ A^* e_i = lambda_i e_i - 0 = lambda_i e_i $
-
-This proves that $e_i$ is *still* an eigenvector of $A^*$, with its original eigenvalue $lambda_i$.
-Because $lambda_1$ has been reduced to $0$, the new highest eigenvalue in $A^*$ is now $lambda_2$.
+Thus, at each iteration, the next improvement is chosen by implicitly optimizing the loss function via gradient descent in function space.
 
 #note[
-  To find it, we simply apply the Power Method again on $A^*$
+  How this gradient looks depends on our choice of the loss function
 ]
 
-=== Extracting the Two Parameters (Projecting the Data)
+==== Case 1: Mean Squared Error (MSE)
 
-By repeating the deflation and power method, we can extract the top two parameters: the first two principal eigenvectors $e_1$ and $e_2$ (corresponding to $lambda_1$ and $lambda_2$).
+If we use MSE, we are tracking both the *sign* and the *magnitude* of the error:
 
-If we want to reduce our massive dataset down to a 2-dimensional space for visualization or compression, we use these two vectors to build a projection matrix $P$:
+$ L(x, y, F_M)  prop sum_i (y_i - hat(y)_i)^2 $
+Taking the partial derivative with respect to the prediction $hat(y)_k$:
+$ (partial) / (partial hat(y)_k) L(y, hat(y)) prop -2(y_k - hat(y)_k) $
+Therefore, the gradient is exactly proportional to the residual: $nabla L prop -2(y - hat(y))$.
 
-$ P = [e_1, e_2] $
+==== Case 2: Mean Absolute Error (MAE)
+
+The risk of using MSE is *chasing outliers* due to large squared magnitudes.
+A solution is to only learn the *sign* of the residual.
+We do this by changing our loss function to MAE:
+
+$ L(x, y, F_M) prop sum_i |y_i - hat(y)_i| $
+Taking the partial derivative:
+$ (partial) / (partial hat(y)_k) L(y, hat(y)) prop -"sign"(y_k - hat(y)_k) $
+Therefore, the gradient tracks only the direction: $nabla L prop -"sign"(y - hat(y))$.
 
 #note[
-  This is a $d times 2$ matrix
+  *Efficiency trick:* Even when evaluating the overall model using MAE to avoid outliers, when learning the individual regression tree stumps, we still choose the node splits according to Squared Error minimization. This is done purely for computational efficiency.
 ]
 
-To compress any original data point $x$ (which is $d$-dimensional) into a new 2-dimensional point $x'$, we simply project it:
-
-$ x' = P^T x $
+=== Gradient Boosting in Practice (XGBoost)
+The most popular and successful implementation of gradient boosting is *XGBoost*. It provides extreme portability and scalability (it runs natively on distributed systems like Hadoop and Spark) and has proven to be highly successful in machine learning competitions like Kaggle.
