@@ -3,13 +3,13 @@
 = Data Streams
 
 Streams are a continuous flow of data.
-If it is not processed immediately or stored, then it's lost forever. 
+If it is not processed immediately or stored, then it's lost forever.
 
 #note[
   We must assume that data arrives so rapidly that it's impossible to store it in a conventional database to analyze later.
 ]
 
-Processing streams involve a *summarization* of the stream data in some way. 
+Processing streams involve a *summarization* of the stream data in some way.
 Instead of trying to store every single piece of data, summarization consists of keeping continuously updated statistics or highly compact data structures in Main Memory (RAM).
 
 Summarization can be also approached by looking at only a fixed length window consisting of the last $n$ elements for some large $n$, querying the window only when necessary.
@@ -25,41 +25,41 @@ Stream data arises naturally in various scenarios:
 #figure(
   cetz.canvas({
     import cetz.draw: *
-    
+
     // Input streams (left side)
     let input-streams = (
       (name: "Stream 1", y: 2),
       (name: "Stream 2", y: 0),
       (name: "Stream 3", y: -2),
     )
-    
+
     for stream in input-streams {
       line((-4, stream.y), (-2.5, stream.y), mark: (end: ">"), stroke: blue)
       content((-4.5, stream.y), stream.name, anchor: "east")
     }
-    
+
     // Stream Processor (center)
     rect((-2, -3), (2, 3), stroke: 2pt + olive, name: "processor")
     content((0, 3.5), text(weight: "bold")[Stream Processor], anchor: "south")
-    
+
     // Standing queries inside processor
     content((0, 1.5), [Standing Query 1], fill: white)
     content((0, 0.5), [Standing Query 2], fill: white)
     content((0, -0.5), [Standing Query 3], fill: white)
     content((0, -1.5), [$dots.v$])
-    
+
     // Output streams (right side)
     line((2, 1.5), (4, 2), mark: (end: ">"), stroke: maroon)
     content((4.5, 2), [Query Results], anchor: "west")
-    
+
     line((2, 0), (4, 0), mark: (end: ">"), stroke: maroon)
     content((4.5, 0), [Alerts], anchor: "west")
-    
+
     rect((3.5, -2), (6.5, -1), stroke: orange, name: "storage")
     content((5, -1.5), [Archival Storage])
     line((2, -1.5), (3.5, -1.5), mark: (end: ">"), stroke: orange)
   }),
-  caption: [Data Stream Management System]
+  caption: [Data Stream Management System],
 )
 
 Stream processors (we're talking about software) are a kind of data management system where any number of streams can enter the system.
@@ -67,13 +67,13 @@ Each stream provides elements at its own schedule and the arrival rate is not un
 
 #note[
   In a normal DBMS, the data "chills" on the disk.
-  It uses a *pull mechanism*, meaning the DBMS retrieves data from the disk at its own pace. 
+  It uses a *pull mechanism*, meaning the DBMS retrieves data from the disk at its own pace.
   In a stream processor, a *push mechanism* is used: data is fired into the processor continuously and in rapid bursts ("a raffica"), forcing the system to deal with it instantly.
 ]
 
 #note[
-  *Archival Storage (The "dusty warehouse"):* Streams are usually dumped into huge, cheap, and slow storage (like AWS S3 or Hadoop data lakes). We assume it's impossible to answer real-time queries from here. 
-  
+  *Archival Storage (The "dusty warehouse"):* Streams are usually dumped into huge, cheap, and slow storage (like AWS S3 or Hadoop data lakes). We assume it's impossible to answer real-time queries from here.
+
   *Time-consuming retrieval processes (Batch processing):* If we really need historical data from the archive (e.g., for a legal audit or to train a new Machine Learning model from scratch), we must run heavy Batch Jobs (like MapReduce). These sweep through terabytes of data and can take hours or days to finish.
 
   *Working Storage (The "active desk"):* Since we can't wait hours to answer a stream query, we use fast, limited memory (RAM or fast SSDs) as our "desk" to store only *active summaries* (e.g., running averages, Bloom filters, or a sliding window of the last 5 minutes). When a query arrives, the system instantly reads the desk and completely ignores the warehouse.
@@ -85,7 +85,7 @@ There are two primary ways queries are asked on streams:
 
 1. *Standing Queries:* These queries are submitted once but execute *permanently*. They continuously inspect the stream as it flows and produce outputs/alerts when specific conditions are met (e.g., "Alert me if the temperature is > 25°C").
 
-2. *Ad-hoc Queries:* Questions asked once about the current state (like a standard SQL `SELECT`). 
+2. *Ad-hoc Queries:* Questions asked once about the current state (like a standard SQL `SELECT`).
 
 #warning[
   Since we throw away the stream history, answering *arbitrary* ad-hoc queries is impossible.
@@ -94,12 +94,12 @@ There are two primary ways queries are asked on streams:
 
 === The Sliding Window Approach
 
-To allow ad-hoc queries on the *recent past*, we can store a *sliding window* in the Working Storage. 
+To allow ad-hoc queries on the *recent past*, we can store a *sliding window* in the Working Storage.
 Instead of keeping everything, we buffer only the most recent $n$ elements, or all elements from the last $t$ minutes.
-When new data enters, the oldest data falls out of the window. 
+When new data enters, the oldest data falls out of the window.
 We can then treat this temporary window just like a standard relational table and run normal ad-hoc SQL queries on it.
 
-#example[  
+#example[
   *Standing Query Example - Computing the average:*
   The average of $n$ elements is:
   $ x_1, ..., x_n --> overline(x)_n = 1/n sum_(i=1)^n x_i $
@@ -136,13 +136,13 @@ One major technique is *sampling*.
 #example[
   Let's suppose we take a *10% sample* of our stream.
   Suppose we are looking for simple events ($s$) and paired/double events ($d$).
-  
+
   If we sample at 10%:
   - Simple events $s$ will appear in our sample as $s/10$.
   - For double events $d$ (pairs), what is the probability of capturing both parts, or just one?
     - Probability of capturing both: $1/10 * 1/10 = 1/100$
     - Probability of capturing exactly one: $2 * (1/10) * (9/10) = 18/100$
-  
+
   This drastically *distorts* the ratios of events in our sample compared to the true stream.
 ]
 
@@ -155,12 +155,12 @@ So our goal is either we process *all* events from a specific User, or *none* of
 *Naive Approach:* We randomly select 10% of users and keep a list of their IDs in Main Memory. When a new event arrives, we check if its User ID is on our "accepted" list.
 
 #warning[
-Storing millions of user IDs would quickly exhaust our RAM.
+  Storing millions of user IDs would quickly exhaust our RAM.
 ]
 
 The Solution is hashing.
 
-Instead of storing IDs, we use a *Hash Function* $h(x)$ to map each User ID into one of $B$ buckets (e.g., $B = 100$). 
+Instead of storing IDs, we use a *Hash Function* $h(x)$ to map each User ID into one of $B$ buckets (e.g., $B = 100$).
 - A hash function is deterministic: the same User ID will *always* hash to the exact same bucket. Therefore, we don't need to remember the user; the hash calculates their "group" on the fly.
 - If we want a *10% sample*, we accept the event only if the hash falls into buckets $0$ through $9$.
 - *Dynamic Resizing:* If the stream volume spikes and we run out of memory, we can dynamically lower the threshold. By accepting only buckets $0$ through $4$, we instantly reduce our sample to 5% without needing to recalculate anything or modify data structures. We democratically "kill" 50% of the currently tracked users to free up RAM.
@@ -185,7 +185,7 @@ Because multiple elements might accidentally leave the same footprint (hash coll
 1. Initialize an array of $m$ bits to 0.
 2. Choose $k$ independent hash functions.
 3. For every key in our trusted list $S$, hash it with all $k$ functions. Set the bits at those resulting indices to 1.
-   $ forall x in S, quad forall i in [1, k], quad b[h_i (x)] = 1 $
+  $ forall x in S, quad forall i in [1, k], quad b[h_i (x)] = 1 $
 
 *2. Querying the Stream (Checking $x$):*
 As the stream flows, we check if a new element $x$ is in $S$ by hashing it with the same $k$ functions.
@@ -214,13 +214,13 @@ How do we count the number of *unique* elements in a massive stream without stor
 *The Intuition:* If we see the same element 100 times, we don't want to count it 100 times. By applying a *Hash Function*, the same element will always produce the exact same binary string. Thus, duplicates don't affect our measurements.
 
 We look at the binary representation of the hash values and focus on the *tail length* ($R$): the number of trailing zeroes.
-For example: 
+For example:
 
-- `00110` has $R = 1$. 
+- `00110` has $R = 1$.
 - `01000` has $R = 3$.
 
 #example[
-*The Coin Toss Analogy:* Getting a hash that ends in `000` (probability $1/8$) is like flipping a coin and getting tails 3 times in a row. If you see such a rare event, you can probabilistically guess you've flipped the coin about $8$ times ($2^3$). 
+  *The Coin Toss Analogy:* Getting a hash that ends in `000` (probability $1/8$) is like flipping a coin and getting tails 3 times in a row. If you see such a rare event, you can probabilistically guess you've flipped the coin about $8$ times ($2^3$).
 ]
 
 === The Algorithm
@@ -242,36 +242,36 @@ Let's look at how $m$ (number of unique elements) relates to $2^r$ (the rarity o
 - If $m >> 2^r$, we have made many attempts. We will *definitely* see an element with $r$ zeros.
 - If $m << 2^r$, we have made very few attempts. We will *rarely* see an element with $r$ zeros.
 
-*The Crossover Point:* The mathematical threshold where we go from "rarely seeing it" to "definitely seeing it" happens exactly when our number of attempts equals the rarity of the event: $m approx 2^r$. 
+*The Crossover Point:* The mathematical threshold where we go from "rarely seeing it" to "definitely seeing it" happens exactly when our number of attempts equals the rarity of the event: $m approx 2^r$.
 
 Because of this, if the absolute longest tail we recorded during the stream is $R_"max"$, it strongly implies we processed approximately $2^(R_"max")$ distinct elements to achieve that record. Thus, $2^(R_"max")$ is our solid estimator for $m$.
 
 #warning[
-The Outlier Problem: This basic method is extremely sensitive. One single "lucky" hash with 20 trailing zeroes will completely ruin the estimate, predicting over a million elements even if we only saw 10!
+  The Outlier Problem: This basic method is extremely sensitive. One single "lucky" hash with 20 trailing zeroes will completely ruin the estimate, predicting over a million elements even if we only saw 10!
 
-*The Fix (Median of Averages)*:
-1. Use multiple independent hash functions.
-2. Group them into small buckets and compute the average estimate within each group (this smooths out small variations).
-3. Take the median of those group averages. The median strictly ignores extreme outliers, giving a robust final estimate.
+  *The Fix (Median of Averages)*:
+  1. Use multiple independent hash functions.
+  2. Group them into small buckets and compute the average estimate within each group (this smooths out small variations).
+  3. Take the median of those group averages. The median strictly ignores extreme outliers, giving a robust final estimate.
 ]
 
 = Stream Moments
 
-Moments are statistical metrics used to capture the "shape" or frequency distribution of items in a stream. 
+Moments are statistical metrics used to capture the "shape" or frequency distribution of items in a stream.
 Let $m_i$ be the number of occurrences (frequency) of the $i$-th distinct item.
 
-The $k$-th moment is defined as the sum of all frequencies raised to the power of $k$: 
+The $k$-th moment is defined as the sum of all frequencies raised to the power of $k$:
 $ sum_i (m_i)^k $
 
 By changing the exponent $k$, we apply a different "magnifying glass" to our data:
 
-- *0th Moment ($k=0$):* $sum_i (m_i)^0$ 
+- *0th Moment ($k=0$):* $sum_i (m_i)^0$
   Since any number to the power of $0$ is $1$, we are simply adding $1$ for every unique item we see, regardless of its frequency. This represents the *Number of distinct elements* (exactly what the Flajolet-Martin algorithm estimates!).
 
 - *1st Moment ($k=1$):* $sum_i (m_i)^1$
   Since any number to the power of $1$ is itself, we are just summing all the frequencies together. This gives us the *Total length of the stream*.
 
-- *2nd Moment ($k=2$):* $sum_i (m_i)^2$ 
+- *2nd Moment ($k=2$):* $sum_i (m_i)^2$
   This is called the *Surprise Number*. By squaring the frequencies before summing them, we disproportionately amplify the weight of items that appear very often. It measures how uneven, skewed, or "surprising" the data distribution is.
 
 
@@ -292,13 +292,13 @@ By changing the exponent $k$, we apply a different "magnifying glass" to our dat
 
 == The AMS Algorithm (Alon-Matias-Szegedy)
 
-If we don't have enough Main Memory to maintain exact frequency counters for *all* distinct elements, we can't calculate the exact Second Moment. 
+If we don't have enough Main Memory to maintain exact frequency counters for *all* distinct elements, we can't calculate the exact Second Moment.
 *The Solution* is to use the AMS algorithm to *estimate* the Second (and higher) Moments by randomly sampling just a few specific positions in the stream.
 
 *How it works:* We decide in advance to track a fixed number of variables (more variables = higher accuracy).
 For each selected variable $X$, we track two things:
-1.  *The element* found at the randomly chosen position.
-2.  *The value ($v$):* A counter that tracks how many times that specific element appears from that position *onwards* until the end of the stream.
+1. *The element* found at the randomly chosen position.
+2. *The value ($v$):* A counter that tracks how many times that specific element appears from that position *onwards* until the end of the stream.
 
 #warning[
   *Stream limitation:* I cannot access the stream like an array or vector! I only see the *current* element passing by.
@@ -307,9 +307,9 @@ For each selected variable $X$, we track two things:
 
 #example[
   *Step 1: The True Moment (for comparison)* \
-  Consider a stream of length $n=15$: 
+  Consider a stream of length $n=15$:
   $ a, b, c, b, d, a, c, d, a, b, d, c, a, a, b $
-  
+
   The true frequencies are:
   - $m(a)=5$
   - $m(b)=4$
@@ -320,7 +320,7 @@ For each selected variable $X$, we track two things:
   $ F_2 = sum_i (m_i)^2 = 25 + 16 + 9 + 9 = 59 $
 
   *Step 2: The AMS Estimation* \
-  Let's say we only have memory to track 3 variables. We pick 3 random positions uniformly: 
+  Let's say we only have memory to track 3 variables. We pick 3 random positions uniformly:
   - Position 3 (element `c`)
   - Position 8 (element `d`)
   - Position 14 (element `a`)
@@ -342,19 +342,19 @@ Where:
 - $v$ is the count of the element from the chosen position onwards.
 
 #note[
-  *Why this formula?* The mathematical proof (shown below) guarantees that the *expected value* (the statistical average) of this random variable $X$ is exactly the true Second Moment ($F_2$). 
+  *Why this formula?* The mathematical proof (shown below) guarantees that the *expected value* (the statistical average) of this random variable $X$ is exactly the true Second Moment ($F_2$).
 ]
 
 *Applying the formula to our example ($n=15$):*
 Let's calculate the estimate $X$ for each of the 3 positions we picked.
 
-- *Variable 1 (pos 3, `c`):* From pos 3 onwards, `c` appears 3 times ($v=3$). 
+- *Variable 1 (pos 3, `c`):* From pos 3 onwards, `c` appears 3 times ($v=3$).
   $ X_1 = 15(2 dot 3 - 1) = 15(5) = 75 $
 
-- *Variable 2 (pos 8, `d`):* From pos 8 onwards, `d` appears 2 times ($v=2$). 
+- *Variable 2 (pos 8, `d`):* From pos 8 onwards, `d` appears 2 times ($v=2$).
   $ X_2 = 15(2 dot 2 - 1) = 15(3) = 45 $
 
-- *Variable 3 (pos 13, penultimate `a`):* From pos 13 onwards, `a` appears 2 times (at pos 13 and 14). So, $v=2$. 
+- *Variable 3 (pos 13, penultimate `a`):* From pos 13 onwards, `a` appears 2 times (at pos 13 and 14). So, $v=2$.
   $ X_3 = 15(2 dot 2 - 1) = 15(3) = 45 $
 
 === The Final Estimate
@@ -369,14 +369,14 @@ As we can see, our estimate of $55$ is a very solid approximation of the true $F
 Our goal is to prove that our estimator is unbiased, meaning its expected value $E[X]$ is exactly equal to the true Second Moment $F_2 = sum m_i^2$.
 
 ==== *Step 1: The Expected Value over all positions*
-The probability of uniformly selecting any specific position $p$ in a stream of length $n$ is $1/n$. 
+The probability of uniformly selecting any specific position $p$ in a stream of length $n$ is $1/n$.
 By definition, the expected value is the sum over all possible positions $p$ of the probability times the variable's value:
 $ E[X] = sum_(p=1)^n P("picking position " p) dot (n(2v_p - 1)) $
 $ E[X] = sum_(p=1)^n 1/n dot n(2v_p - 1) = sum_(p=1)^n (2v_p - 1) $
 
 ==== *Step 2: The Grouping Trick*
 
-Instead of summing position by position (chronologically), we can rearrange this massive sum by grouping the terms by *distinct elements*. 
+Instead of summing position by position (chronologically), we can rearrange this massive sum by grouping the terms by *distinct elements*.
 
 Let's look at element `a`, which appears $m_a=5$ times in total. If we read the stream from right to left (end to start), the values of $v$ for `a` will naturally be:
 - The last `a` seen: $v=1$
@@ -394,7 +394,7 @@ Notice that $(2j - 1)$ generates the sequence of odd numbers: $1, 3, 5, 7, ...$
 ]
 
 *Step 3: The Conclusion*
-If we substitute this property back into our expectation, the contribution of element $i$ becomes exactly $m_i^2$. 
+If we substitute this property back into our expectation, the contribution of element $i$ becomes exactly $m_i^2$.
 Summing this over all distinct items gives us the exact definition of the Second Moment:
 $ E[X] = sum_(i in "items") (sum_(j=1)^(m_i) (2j - 1)) = sum_(i in "items") m_i^2 = F_2 $
 
@@ -402,7 +402,7 @@ $ E[X] = sum_(i in "items") (sum_(j=1)^(m_i) (2j - 1)) = sum_(i in "items") m_i^
 
 We estimate $k$-th moments (for $k > 2$) using the exact same logic. The only thing that changes is the mathematical formula used for the random variable estimator.
 
-*The Pattern:* Notice that our 2nd moment multiplier $(2v - 1)$ is actually just the difference between squares: $v^2 - (v - 1)^2$. 
+*The Pattern:* Notice that our 2nd moment multiplier $(2v - 1)$ is actually just the difference between squares: $v^2 - (v - 1)^2$.
 Because of how the summation works across the stream, the sum of these differences perfectly reconstructs the total squared frequency $m^2$.
 
 To calculate the 3rd moment, we simply replace the difference of squares with the difference of cubes:
@@ -428,14 +428,14 @@ We maintain a fixed "reservoir" of $s$ counters (dictated by our available RAM).
 1. *Initialization:* Store the first $s$ elements of the stream unconditionally (probability is $1$).
 2. *The Invariant:* At any current time $n$ (where $n > s$), every position seen so far has a uniform probability of $s/n$ of being currently inside our reservoir.
 3. *The Update Rule:* When the $(n+1)$-th element arrives:
-   - We decide to *keep it* with probability $s/(n+1)$.
-   - If we decide to keep it, we must make room. We discard one of the existing $s$ counters inside the reservoir, chosen *uniformly at random*.
+  - We decide to *keep it* with probability $s/(n+1)$.
+  - If we decide to keep it, we must make room. We discard one of the existing $s$ counters inside the reservoir, chosen *uniformly at random*.
 
 === Proof of Uniform Probability (By Induction)
 
 We must prove that if our invariant holds at step $n$ (the probability is $s/n$), it strictly holds after processing the new element at step $n+1$ (the probability must mathematically become $s/(n+1)$).
 
-To find the probability that a specific "old" element survives step $n+1$, we use the *Law of Total Probability*. 
+To find the probability that a specific "old" element survives step $n+1$, we use the *Law of Total Probability*.
 For an element to survive, two things must happen in sequence:
 1. *Prerequisite:* It was already in the memory at step $n$ (Probability: $s/n$).
 2. *Survival:* AND it was NOT evicted during step $n+1$.
@@ -449,7 +449,9 @@ How can it avoid eviction? There are two mutually exclusive "lucky" scenarios:
 
 Putting it all together into one equation:
 
-$ P("survive") = underbrace(s/n, "was in at " n) dot [ underbrace((1 - s/(n+1)), "Scenario A: new ignored") + underbrace(s/(n+1) dot (s-1)/s, "Scenario B: new kept, other swapped") ] $
+$
+  P("survive") = underbrace(s/n, "was in at " n) dot [ underbrace((1 - s/(n+1)), "Scenario A: new ignored") + underbrace(s/(n+1) dot (s-1)/s, "Scenario B: new kept, other swapped") ]
+$
 
 *Simplifying the math (the term in brackets):*
 Notice how the $s$ safely cancels out in Scenario B: $s/(n+1) dot (s-1)/s = (s-1)/(n+1)$.
