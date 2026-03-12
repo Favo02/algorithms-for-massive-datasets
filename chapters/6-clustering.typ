@@ -10,14 +10,14 @@ The final number of groups might be unspecified.
 == The problem of dimension
 
 Traditional algorithms struggle when data dimensionality $d$ grows.
-Typically, the size grows up in two directions:
+Typically, the data volume grows in two directions:
 
 - the number of items grows a lot
 - the dimension of one element grows a lot (e.g., DNA, document topics)
 
 #informally[
-  In the latter case, the "curse of dimensionality" starts messing up.
-  When the dimension grows up, distances start to lose their meaning.
+  In the latter case, the "curse of dimensionality" becomes problematic.
+  When the dimension grows, distances start to lose their meaning.
 ]
 
 #warning()[
@@ -100,7 +100,11 @@ To choose the number of clusters $k$ or to decide when to stop merging, we look 
   If we don't know the correct value of $k$, we can find it logarithmically:
   1. Run the clustering for $k = 1, 2, 4, 8, dots$
   2. Eventually, you will find two values $v$ and $2v$ between which the metric (e.g., average diameter) does *not* decrease much.
-  3. This means the true $k$ lies between $v/2$ and $v$. Use *Binary Search* in that range to tweak and find the exact correct value of $k$.
+  3. This suggests that a good value of $k$ may lie between $v/2$ and $v$. Use *Binary Search* in that range to refine the choice.
+]
+
+#note[
+  This is a practical heuristic, not a guarantee: the elbow may be weak or ambiguous.
 ]
 
 == K-Means Basics
@@ -124,7 +128,7 @@ A very effective approach is to pick points that are as far away from one anothe
 
 The *BFR* algorithm (Bradley, Fayyad, and Reina) is a "Big Data" replacement for K-Means, designed for data that does not fit in main memory.
 It is designed for high-dimensional data and assumes clusters follow a *Multivariate Gaussian Distribution*.
-It works on *Euclidean spaces*: the points are vectors of independent gaussian variables.
+It works on *Euclidean spaces*: the points are vectors of independent Gaussian variables.
 
 #note[
   Clusters look like concentric ellipses (or circles if standard deviations are equal).
@@ -143,8 +147,8 @@ To solve memory problems, for each chunk we classify the points into three sets:
 
 When processing a new chunk of points, BFR performs these steps:
 1. Add points that are sufficiently close to a centroid to that cluster (updating the statistics and discarding the point).
-2. Cluster the remaining points along with the old *Retained Set*. Clusters of more than one point become new *Compressed Sets* (miniclusters). Singletons become the new *Retained Set*.
-3. Merge miniclusters with one another if they are close enough.
+2. Cluster the remaining points along with the old *Retained Set*. Clusters of more than one point become new *Compressed Sets* (mini-clusters). Singletons become the new *Retained Set*.
+3. Merge mini-clusters with one another if they are close enough.
 4. Write out the assignments of points to secondary memory.
 
 === Summarizing clusters
@@ -178,7 +182,11 @@ To calculate the distance between a point and a cluster we use the *Mahalanobis 
 $ d(x, c) = sqrt(sum_(i=1)^d ((x_i - c_i)/sigma_i)^2) $
 
 If a point is too distant to all the clusters, we don't want to assign that to any cluster.
-So we set a threshold (e.g., 4 standard deviations), and if a point's Mahalanobis distance is over that threshold for all clusters, we put it into the retain set.
+So we set a threshold on the Mahalanobis distance, and if a point is over that threshold for all clusters, we put it into the retained set.
+
+#note[
+  In practice, the threshold is often selected using a confidence level from the $chi^2_d$ distribution (or chosen as a heuristic such as a fixed constant).
+]
 
 #informally[
   But this is somehow counterintuitive: the algorithm can, in fact, add more clusters.
@@ -204,11 +212,11 @@ For a cluster $C$, we store:
   $ "rowsum"(x) = sum_(y in C) d(x, y)^2 $
 ]
 
-This algorithms uses a hybrid approach between point assignment and hierarchical approach: *clusters are created dynamically*.
+This algorithm uses a hybrid approach between point assignment and a hierarchical approach: *clusters are created dynamically*.
 The idea is that when a point gets assigned:
 
 1. I find the new clustroid among the $k$ closest points to $c$.
-2. I save the farthest points because in future moments I will have to *merge* clusters, so I need those boundary points to make good decisions.
+2. I save the farthest points because later I may have to *merge* clusters, so I need those boundary points to make good decisions.
 
 The algorithm works using a tree.
 
@@ -221,14 +229,14 @@ In the intermediate phase of the execution:
 
 The sample is selected appropriately to save space in Main Memory (MM) while using the algorithm.
 
-It navigates the tree to select in which cluster assign a point.
+It navigates the tree to select which cluster should receive a point.
 
 === Updating the representation
 
 Once I have assigned a point to a cluster, I have to modify the representation.
 
 #warning[
-  how do I compute the rowsum of the new points without access to all previous points?
+  How do I compute the rowsum of the new points without access to all previous points?
 ]
 
 We approximate the distances using a property of triangles.
