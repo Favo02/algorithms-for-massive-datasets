@@ -45,6 +45,10 @@
 #include "chapters/4-frequent-itemsets.typ"
 #include "chapters/5-data-streams.typ"
 
+
+
+#include "chapters/6-clustering.typ"
+
 #show: part.with("Implementation", chapters-numbering: "A.1.", reset-chapters: true)
 
 #include "chapters/a-spark.typ"
