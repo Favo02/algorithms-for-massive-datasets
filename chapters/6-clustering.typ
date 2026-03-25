@@ -109,7 +109,7 @@ To choose the number of clusters $k$ or to decide when to stop merging, we look 
 
 == K-Means Basics
 
-The best-known point-assignment algorithm is *k-means*. 
+The best-known point-assignment algorithm is *k-means*.
 It assumes a Euclidean space and that the number of clusters $k$ is known in advance.
 The algorithm is simple:
 1. Initially choose $k$ points to be the centroids of the clusters.
@@ -191,7 +191,7 @@ So we set a threshold on the Mahalanobis distance, and if a point is over that t
 #informally[
   But this is somehow counterintuitive: the algorithm can, in fact, add more clusters.
 
-  Why do I have to keep the "promising" mini-clusters (from the *Compressed Set*) if I already have the remaining ones? 
+  Why do I have to keep the "promising" mini-clusters (from the *Compressed Set*) if I already have the remaining ones?
   The core idea here is to *promote mini-clusters* into full clusters once enough points accumulate and merge together.
 ]
 
@@ -253,7 +253,7 @@ $ "rowsum"(x) approx N dot d^2(x, c) + "rowsum"(c) $
 ==== Update Steps:
 1. Update the total number of points: $N -> N + 1$.
 2. Add the squared distance of the new point to the existing rowsums of $c$, the $k$ closest, and the $k$ farthest points:
-   $ "new_rowsum"(p) = "old_rowsum"(p) + d^2(p, x) $
+  $ "new_rowsum"(p) = "old_rowsum"(p) + d^2(p, x) $
 3. Check if $x$ belongs to the $k$ closest or $k$ farthest points. If it does, calculate its rowsum using the approximation above and insert it, displacing the point that is no longer in the top $k$.
 
 ==== *Evaluating a new Clustroid:*

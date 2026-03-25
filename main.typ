@@ -44,32 +44,11 @@
 #include "chapters/3-similarity.typ"
 #include "chapters/4-frequent-itemsets.typ"
 #include "chapters/5-data-streams.typ"
-
-
-
 #include "chapters/6-clustering.typ"
-
-
-
-
 #include "chapters/7-regression.typ"
-
-
-
-
-
 #include "chapters/8-recommendation.typ"
-
-
-
-
-
-
 #include "chapters/9-deep-learning.typ"
-
 #include "chapters/10-gradient-boosting.typ"
-
-
 #include "chapters/11-dimensionality-reduction.typ"
 
 #show: part.with("Implementation", chapters-numbering: "A.1.", reset-chapters: true)

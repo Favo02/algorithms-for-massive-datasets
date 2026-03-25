@@ -10,7 +10,7 @@
 == Boosting and Additive Modeling
 
 In many real-world machine learning scenarios, relying on a single, highly complex predictor is not the optimal strategy.
-Instead, we employ an *ensemble approach* (Boosting): instead of training one single complex model, we train a lot of simple, *weak learners*. 
+Instead, we employ an *ensemble approach* (Boosting): instead of training one single complex model, we train a lot of simple, *weak learners*.
 
 The final result is the aggregation of the outputs of these single weak learners.
 This approach significantly reduces the risk of overfitting while maintaining high predictive capacity.
@@ -39,9 +39,9 @@ We can rewrite our additive model specifically for Gradient Boosting as:
 
 $ F_M (x) = f_0 (x) + sum_(i=1)^M Delta_i (x) $
 
-where $f_0$ is the baseline model and $Delta_i$ are the subsequent learner models optimizing the residuals. 
+where $f_0$ is the baseline model and $Delta_i$ are the subsequent learner models optimizing the residuals.
 
-- *The Baseline ($f_0$):* We start by using a "normal" function as a baseline. For regression, this often gives us a *constant prediction* (e.g., predicting the mean of all target values in the dataset). 
+- *The Baseline ($f_0$):* We start by using a "normal" function as a baseline. For regression, this often gives us a *constant prediction* (e.g., predicting the mean of all target values in the dataset).
 - *The Refinements ($Delta_i$):* Then we start adding simple models that try to cover the distance between the baseline and the true value.
 
 #informally[
@@ -50,7 +50,7 @@ where $f_0$ is the baseline model and $Delta_i$ are the subsequent learner model
 
 === Weak Learners: Regression Trees
 
-The standard machine learning model used as a weak learner ($Delta_i$) is the *Regression Tree*. 
+The standard machine learning model used as a weak learner ($Delta_i$) is the *Regression Tree*.
 To maintain strict control over the complexity, we must use *simple* models.
 We typically use *regression tree stumps*, which are the simplest regression trees, having a depth of exactly 1 (only one root node and two leaves).
 
@@ -136,7 +136,7 @@ Thus, at each iteration, the next improvement is chosen by implicitly optimizing
 
 If we use MSE, we are tracking both the *sign* and the *magnitude* of the error:
 
-$ L(x, y, F_M)  prop sum_i (y_i - hat(y)_i)^2 $
+$ L(x, y, F_M) prop sum_i (y_i - hat(y)_i)^2 $
 Taking the partial derivative with respect to the prediction $hat(y)_k$:
 $ (partial) / (partial hat(y)_k) L(y, hat(y)) prop -2(y_k - hat(y)_k) $
 Therefore, the gradient is exactly proportional to the residual: $nabla L prop -2(y - hat(y))$.

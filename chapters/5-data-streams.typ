@@ -207,7 +207,7 @@ $ "FPR" = (1 - e^(-k n/m))^k $
   To lower the FPR, you either need to increase $m$ (devote more RAM to the bit array to reduce crowding) or optimize the number of hash functions $k$. Time complexity for checking an element remains constant $O(k)$, which is perfect for fast streams.
 ]
 
-= Counting Distinct Elements
+== Counting Distinct Elements
 
 How do we count the number of *unique* elements in a massive stream without storing them? We use the *Flajolet-Martin Algorithm*.
 
@@ -255,7 +255,7 @@ Because of this, if the absolute longest tail we recorded during the stream is $
   3. Take the median of those group averages. The median strictly ignores extreme outliers, giving a robust final estimate.
 ]
 
-= Stream Moments
+== Stream Moments
 
 Moments are statistical metrics used to capture the "shape" or frequency distribution of items in a stream.
 Let $m_i$ be the number of occurrences (frequency) of the $i$-th distinct item.
@@ -290,7 +290,7 @@ By changing the exponent $k$, we apply a different "magnifying glass" to our dat
   The Surprise Number in Scenario B is huge because squaring $90$ creates a massive number ($8100$). This mathematically highlights that the stream is dominated by a single repeating element.
 ]
 
-== The AMS Algorithm (Alon-Matias-Szegedy)
+=== The AMS Algorithm (Alon-Matias-Szegedy)
 
 If we don't have enough Main Memory to maintain exact frequency counters for *all* distinct elements, we can't calculate the exact Second Moment.
 *The Solution* is to use the AMS algorithm to *estimate* the Second (and higher) Moments by randomly sampling just a few specific positions in the stream.

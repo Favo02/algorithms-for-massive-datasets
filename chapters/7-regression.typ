@@ -3,7 +3,7 @@
 = Regression
 
 #informally()[
-  In supervised learning, we speak of *regression* when the labels associated with our objects are numbers (typically continuous). 
+  In supervised learning, we speak of *regression* when the labels associated with our objects are numbers (typically continuous).
 ]
 
 Unlike classification where the output is a discrete class, regression outputs fall into a continuous mathematical space.
@@ -28,7 +28,7 @@ This is simple, but it is fast and often works remarkably well.
 === Affine Mapping (Adding a Bias)
 
 Our linear function $hat(y) = w dot x$ assumes the hyperplane passes through the origin.
-Often, adding a threshold or offset ($w_0$) helps a lot to fit the data properly. 
+Often, adding a threshold or offset ($w_0$) helps a lot to fit the data properly.
 Instead of changing our entire mathematical formulation, we use a trick: we pretend there is an additional dimension in our data and set its value to 1.
 
 $x = (x_1, ..., x_d) -> x = (1, x_1, ..., x_d)$
@@ -43,18 +43,18 @@ Nothing changes in our problem setup; we are still just searching for $w$.
 
 Sometimes data isn't easily predictable with a straight line or a flat hyperplane.
 But we want to keep the math simple and use a linear model anyway.
-How? By extracting new features or combining existing ones. 
+How? By extracting new features or combining existing ones.
 
 Instead of just using the raw inputs, we can project them into a higher-dimensional space using polynomial expansion:
 $
-  (a_1, a_2) &--> a_1^2, sqrt(2) a_1 a_2, a_2^2 \
-  (b_1, b_2) &--> b_1^2, sqrt(2) b_1 b_2, b_2^2 \
-  ... \
-  (a_1 b_1 + a_2 b_2)^2 &= underline(a) underline(b)
+             (a_1, a_2) & --> a_1^2, sqrt(2) a_1 a_2, a_2^2 \
+             (b_1, b_2) & --> b_1^2, sqrt(2) b_1 b_2, b_2^2 \
+                    ... \
+  (a_1 b_1 + a_2 b_2)^2 & = underline(a) underline(b)
 $
 
 This is the foundation of *Kernel Methods*.
-We inject complexity into the original data, incrementing the dimensions so that data that is not linearly separable becomes separable by a linear regressor. 
+We inject complexity into the original data, incrementing the dimensions so that data that is not linearly separable becomes separable by a linear regressor.
 Basically: map $x -> phi(x)$ and then do $w dot phi(x)$.
 
 #informally[
@@ -79,7 +79,7 @@ If we stack our labels, we get a vector $y$ of size $n$.
 === Finding the Minimum (Derivatives & Jacobians)
 
 To find the minimum of a function, we take its derivative and set it to zero.
-But how to calculate these things with vectors? 
+But how to calculate these things with vectors?
 The derivative of a vector is the gradient $nabla$.
 
 $ nabla f = [(d f) / (d x_i)]_i $
@@ -95,26 +95,34 @@ It is nothing but what we obtain by fixing a constant and treating the rest as a
 ]
 
 Applying the chain rule to our vector loss function:
-$ nabla ||X w - y||^2 = 2 (X w - y) underbrace(J(X w - y), "Jacobian") = underbrace(2 X^T (X w - y), "order matters for dimensionality match") $
+$
+  nabla ||X w - y||^2 = 2 (X w - y) underbrace(J(X w - y), "Jacobian") = underbrace(2 X^T (X w - y), "order matters for dimensionality match")
+$
 
 #note[
   - *Gradient* ($nabla$): The first derivative of a scalar function (outputs a vector).
   - *Jacobian* ($J$): The first derivative of a vector function (outputs a matrix). It's a close concept to a second derivative.
-  
-  $ J(X w) &= [(d(X w)_j) / (d w_i)]_(i, j) \
-           &= [ d / (d w_i) sum_(overline(i)=1)^d x_(j overline(i)) w_overline(i)]_(i, j) \
-           &= [x_(j i)]_(i j) \
-           &= X^T $
+
+  $
+    J(X w) & = [(d(X w)_j) / (d w_i)]_(i, j) \
+           & = [ d / (d w_i) sum_(overline(i)=1)^d x_(j overline(i)) w_overline(i)]_(i, j) \
+           & = [x_(j i)]_(i j) \
+           & = X^T
+  $
 ]
 
 We set the gradient to zero to find the minimum:
-$ 2 X^T (X w - y) = 0 \
+$
+  2 X^T (X w - y) = 0 \
   X^T X w - X^T y = 0 \
-  X^T X w = X^T y $
+  X^T X w = X^T y
+$
 
 This is the *Normal Equation*.
 If we assume $(X^T X)$ is invertible, we move around things and solve for $w$:
-$ w = underbrace((underbrace(X^T, d times n) underbrace(X, n times d))^(-1), d times d) underbrace(X^T, d times n) underbrace(y, n) $
+$
+  w = underbrace((underbrace(X^T, d times n) underbrace(X, n times d))^(-1), d times d) underbrace(X^T, d times n) underbrace(y, n)
+$
 
 === Overfitting and Ridge Regression
 
@@ -133,7 +141,7 @@ $ w = (X^T X + lambda I_d)^(-1) X^T y $
 === The Machine Learning Pipeline
 
 What is $lambda$? It's a *hyper-parameter*.
-We cannot learn it directly from the optimization formula; we have to tune it. 
+We cannot learn it directly from the optimization formula; we have to tune it.
 To do this without overfitting, we use data splitting.
 We divide our observations into three distinct sets:
 
@@ -171,7 +179,7 @@ So we have to focus on the dimensionality of the data ($d$) and the number of da
 Let's analyze the complexity in the *Small $d$, Big $n$* case.
 We can fit the final result $w$ and the matrix $X^T X$ ($d times d$) in Main Memory, but we cannot possibly compute the transpose and the product locally if $X$ ($n times d$) is a massive dataset.
 
-The real bottleneck is producing and storing the intermediate matrix $X^T X$ efficiently. 
+The real bottleneck is producing and storing the intermediate matrix $X^T X$ efficiently.
 The last thing I want is a massive local matrix multiplication.
 
 Standard matrix multiplication for $P = A B$ is defined as $P_(i j) = sum_k A_(i k) B_(k j)$.
@@ -226,7 +234,7 @@ $ x_(i+1) = x_i - alpha nabla f(x_i) $
 Applying this to our weights $w$:
 $ w_(i+1) = w_i - alpha nabla ell(w_i) $
 
-If the algorithm reaches the optimum, the derivative there is $0$, resulting in $w_(i+1) = w_i - 0$. 
+If the algorithm reaches the optimum, the derivative there is $0$, resulting in $w_(i+1) = w_i - 0$.
 The parameters stop updating, meaning the algorithm has successfully converged to the minimum.
 
 #warning[
@@ -248,8 +256,10 @@ $ alpha_i = alpha_0 1 / (n sqrt(i)) $
 === Minimize Loss Function
 
 Let's compute the gradient for a single weight $w_k$:
-$ (partial ell) / (partial w_k) &= sum_(j = 1)^n 2(w dot x^((j)) - y^((j))) dot d/(d w_k) (w dot x^((j))) \
-  &= sum_(j = 1)^n 2 (w dot x^((j)) - y^((j))) x_k^((j)) $
+$
+  (partial ell) / (partial w_k) & = sum_(j = 1)^n 2(w dot x^((j)) - y^((j))) dot d/(d w_k) (w dot x^((j))) \
+                                & = sum_(j = 1)^n 2 (w dot x^((j)) - y^((j))) x_k^((j))
+$
 
 #note[
   Notice that $2(w dot x^((j)) - y^((j)))$ is just a scalar multiplier for the feature value.
@@ -271,7 +281,7 @@ while not stop_condition:
     i += 1
 ```
 
-This algorithm is very distributable, as every component of the sum can be distributed on a different node. 
+This algorithm is very distributable, as every component of the sum can be distributed on a different node.
 We can broadcast the weights.
 At a local level (on each node/for each map task):
 
@@ -288,7 +298,7 @@ When dealing with Massive Datasets, raw data is often categorical and extremely 
 
 Mathematical models cannot multiply weights by strings (like "cat" or "black").
 We must map categorical variables to numeric vectors.
-In a *One-Hot Encoding* scheme, we represent each unique `(feature, category)` tuple as a distinct binary dimension. 
+In a *One-Hot Encoding* scheme, we represent each unique `(feature, category)` tuple as a distinct binary dimension.
 
 #example[
   If our feature is "Color" with categories {Red, Green, Blue}, a "Green" object becomes:
@@ -297,8 +307,8 @@ In a *One-Hot Encoding* scheme, we represent each unique `(feature, category)` t
 
 === Sparse Vectors
 
-*OHE* solves the categorical problem but introduces a massive computational issue: sparsity. 
-If a dataset has `100,000` unique categories across all features, each data point becomes a vector of length `100,000` where maybe only 5 values are $1$, and `99,995` values are $0$. 
+*OHE* solves the categorical problem but introduces a massive computational issue: sparsity.
+If a dataset has `100,000` unique categories across all features, each data point becomes a vector of length `100,000` where maybe only 5 values are $1$, and `99,995` values are $0$.
 
 Storing this as a standard dense array is a catastrophic waste of Main Memory.
 Instead, we use *Sparse Vectors*.
@@ -370,19 +380,25 @@ $ w^* = arg min_w sum_(j=1)^n ell_(log) (y^((j)) (w dot x^((j)))) $
 
 We need to compute the gradient.
 First of all, we need the derivative of the log-loss function (applying the chain rule):
-$ ell_(log)^'(z) &= d / (d z) ln(1 + e^(-z)) \
-&= 1/(1+e^(-z)) (-e^(-z)) \
-&= (-e^(-z))/(1 + e^(-z)) $
+$
+  ell_(log)^'(z) & = d / (d z) ln(1 + e^(-z)) \
+                 & = 1/(1+e^(-z)) (-e^(-z)) \
+                 & = (-e^(-z))/(1 + e^(-z))
+$
 
 #note[
-We can algebrically manipulate this fraction into a more convenient form for later steps:
-$ (-e^(-z)) / (1 + e^(-z)) &= (1 - (1 + e^(-z))) / (1 + e^(-z)) \
-&= 1 / (1 + e^(-z)) - 1 \
-&= -(1 - 1 / (1 + e^(-z))) $
+  We can algebrically manipulate this fraction into a more convenient form for later steps:
+  $
+    (-e^(-z)) / (1 + e^(-z)) & = (1 - (1 + e^(-z))) / (1 + e^(-z)) \
+                             & = 1 / (1 + e^(-z)) - 1 \
+                             & = -(1 - 1 / (1 + e^(-z)))
+  $
 ]
 
 Then compute the partial derivatives with respect to $w_k$:
-$ (partial ell) / (partial w_k) = sum_(j=1)^n -(1-1/(1+e^(-w dot x^((j)) y^((j))))) dot d / (d w_k) (w dot x^((j)) y^((j))) $
+$
+  (partial ell) / (partial w_k) = sum_(j=1)^n -(1-1/(1+e^(-w dot x^((j)) y^((j))))) dot d / (d w_k) (w dot x^((j)) y^((j)))
+$
 
 Since $d / (d w_k) (w dot x^((j)) y^((j))) = y^((j)) x_k^((j))$, we get:
 
@@ -409,9 +425,9 @@ $ f_(beta)(x) = 1/(1+e^(-beta x)) $
 The Logistic function is a specific sigmoid function, with $beta$ fixed to 1.
 
 #note[
-Probabilistic Interpretation:
-Beyond strictly predicting a class, Logistic Regression allows us to output class probabilities. We can model the label as a random variable $Y$ and formalize the conditional probability:
-$ PP(Y = +1 | X = x) = 1 / (1 + e^(-w dot x)) $
+  Probabilistic Interpretation:
+  Beyond strictly predicting a class, Logistic Regression allows us to output class probabilities. We can model the label as a random variable $Y$ and formalize the conditional probability:
+  $ PP(Y = +1 | X = x) = 1 / (1 + e^(-w dot x)) $
 ]
 
 === ROC Curves
