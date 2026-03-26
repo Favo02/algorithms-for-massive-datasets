@@ -3,24 +3,25 @@
 = Data Streams
 
 Streams are a continuous flow of data.
-If it is not processed immediately or stored, then it's lost forever.
+If it is not _processed_ or _stored_ immediately, then it's lost forever.
+Systems that analyze streams must process data in *real time*.
 
 #note[
-  We must assume that data arrives so rapidly that it's impossible to store it in a conventional database to analyze later.
+  We must assume that data arrives so rapidly that it's impossible (or too expensive) to store it in a conventional database to analyze later.
+  Storing the data is used only for _archival_ purposes, not for real time querying.
 ]
 
-Processing streams involve a *summarization* of the stream data in some way.
-Instead of trying to store every single piece of data, summarization consists of keeping continuously updated statistics or highly compact data structures in Main Memory (RAM).
+#example[
+  Stream data arises naturally in various scenarios:
+  - *Sensor Data:* E.g., ocean surface height sensors producing a reading every tenth of a second, generating a few megabytes per day.
+    With a lot of sensors, a million (not unrealistic, the ocean is very big), we generate terabytes of data daily.
+  - *Image Data:* E.g., Satellites or surveillance cameras sending continuous image streams.
+  - *Internet and Web Traffic:* E.g., search engines tracking billions of queries and clicks to detect trends.
+]
 
-Summarization can be also approached by looking at only a fixed length window consisting of the last $n$ elements for some large $n$, querying the window only when necessary.
-
-== Examples of Stream Sources
-Stream data arises naturally in various scenarios:
-- *Sensor Data:* E.g., ocean surface temperature or GPS surface height sensors producing megabytes to terabytes of data daily.
-- *Image Data:* Satellites or surveillance cameras (e.g., London's millions of cameras) sending continuous image streams.
-- *Internet and Web Traffic:* Switching nodes routing IP packets, or search engines tracking billions of queries and clicks to detect trends (e.g., tracking virus spread via "sore throat" searches or identifying broken links).
-
-== Data Stream Management system
+Stream processors (not actual CPUs, but software) are data management systems where any number of _streams_ enters the system.
+Each stream provides elements at its own schedule and the arrival rate is not under the system's control.
+The system works with a limited amount of RAM and a storage used for archival purposes.
 
 #figure(
   cetz.canvas({
@@ -29,141 +30,161 @@ Stream data arises naturally in various scenarios:
     // Input streams (left side)
     let input-streams = (
       (name: "Stream 1", y: 2),
-      (name: "Stream 2", y: 0),
-      (name: "Stream 3", y: -2),
+      (name: "Stream 2", y: 0.5),
+      (name: "Stream 3", y: -1),
     )
 
     for stream in input-streams {
-      line((-4, stream.y), (-2.5, stream.y), mark: (end: ">"), stroke: blue)
+      line((-4, stream.y), (-2, stream.y), mark: (end: ">"))
       content((-4.5, stream.y), stream.name, anchor: "east")
     }
 
     // Stream Processor (center)
-    rect((-2, -3), (2, 3), stroke: 2pt + olive, name: "processor")
+    rect((-2, -1.8), (2, 3), name: "processor")
     content((0, 3.5), text(weight: "bold")[Stream Processor], anchor: "south")
 
     // Standing queries inside processor
     content((0, 1.5), [Standing Query 1], fill: white)
     content((0, 0.5), [Standing Query 2], fill: white)
     content((0, -0.5), [Standing Query 3], fill: white)
-    content((0, -1.5), [$dots.v$])
 
     // Output streams (right side)
-    line((2, 1.5), (4, 2), mark: (end: ">"), stroke: maroon)
-    content((4.5, 2), [Query Results], anchor: "west")
+    line((2, 1.5), (4, 1.5), mark: (end: ">"))
+    content((4.5, 1.5), [Query Results], anchor: "west")
 
-    line((2, 0), (4, 0), mark: (end: ">"), stroke: maroon)
+    line((2, 0), (4, 0), mark: (end: ">"))
     content((4.5, 0), [Alerts], anchor: "west")
 
-    rect((3.5, -2), (6.5, -1), stroke: orange, name: "storage")
-    content((5, -1.5), [Archival Storage])
-    line((2, -1.5), (3.5, -1.5), mark: (end: ">"), stroke: orange)
+    // Storage boxes below processor
+    rect((-2, -3.2), (0, -2.7), name: "ram")
+    content((-0.99, -2.95), text(size: 0.8em)[RAM], anchor: "center")
+    rect((0.15, -3.2), (2, -2.7), name: "archive")
+    content((1.1, -2.95), text(size: 0.8em)[Storage], anchor: "center")
+
+    line((1, -2.7), (1, -1.8), mark: (start: ">", end: ">"))
+    line((-1, -2.7), (-1, -1.8), mark: (start: ">", end: ">"))
   }),
   caption: [Data Stream Management System],
 )
 
-Stream processors (we're talking about software) are a kind of data management system where any number of streams can enter the system.
-Each stream provides elements at its own schedule and the arrival rate is not under the system's control.
-
 #note[
-  In a normal DBMS, the data "chills" on the disk.
-  It uses a *pull mechanism*, meaning the DBMS retrieves data from the disk at its own pace.
-  In a stream processor, a *push mechanism* is used: data is fired into the processor continuously and in rapid bursts ("a raffica"), forcing the system to deal with it instantly.
+  This uses the opposite architecture of a traditional system that uses a database:
+  - _Pull_ (database): the data is stored on disk and the system retrieves it when needed.
+  - _Push_ (stream processor): the data is continuously pushed into the system as it arrives, and the system must process it on the fly.
 ]
 
-#note[
-  *Archival Storage (The "dusty warehouse"):* Streams are usually dumped into huge, cheap, and slow storage (like AWS S3 or Hadoop data lakes). We assume it's impossible to answer real-time queries from here.
-
-  *Time-consuming retrieval processes (Batch processing):* If we really need historical data from the archive (e.g., for a legal audit or to train a new Machine Learning model from scratch), we must run heavy Batch Jobs (like MapReduce). These sweep through terabytes of data and can take hours or days to finish.
-
-  *Working Storage (The "active desk"):* Since we can't wait hours to answer a stream query, we use fast, limited memory (RAM or fast SSDs) as our "desk" to store only *active summaries* (e.g., running averages, Bloom filters, or a sliding window of the last 5 minutes). When a query arrives, the system instantly reads the desk and completely ignores the warehouse.
-]
-
-== Querying the Streams
-
-There are two primary ways queries are asked on streams:
-
-1. *Standing Queries:* These queries are submitted once but execute *permanently*. They continuously inspect the stream as it flows and produce outputs/alerts when specific conditions are met (e.g., "Alert me if the temperature is > 25°C").
-
-2. *Ad-hoc Queries:* Questions asked once about the current state (like a standard SQL `SELECT`).
-
-#warning[
-  Since we throw away the stream history, answering *arbitrary* ad-hoc queries is impossible.
-  If you ask "what was the max value yesterday?", the system can't answer because it didn't save yesterday's raw data.
-]
-
-=== The Sliding Window Approach
-
-To allow ad-hoc queries on the *recent past*, we can store a *sliding window* in the Working Storage.
-Instead of keeping everything, we buffer only the most recent $n$ elements, or all elements from the last $t$ minutes.
-When new data enters, the oldest data falls out of the window.
-We can then treat this temporary window just like a standard relational table and run normal ad-hoc SQL queries on it.
+Processing streams involve a *summarization* of the stream data in some way.
+Instead of trying to store every single piece of data, summarization consists of keeping continuously _updated statistics_ or highly compact data structures in Main Memory (RAM).
+Summarization can be also approached by looking at only a _fixed length window_ consisting of the last $n$ elements for some large $n$, querying the window only when necessary.
 
 #example[
-  *Standing Query Example - Computing the average:*
-  The average of $n$ elements is:
-  $ x_1, ..., x_n --> overline(x)_n = 1/n sum_(i=1)^n x_i $
+  Streams are usually dumped into huge storage (e.g. Amazon S3).
+  Because of the slow retrieval times, it's impossible to answer real time queries from there.
 
-  Adding one more element:
-  $
-    overline(x)_(n+1) = 1/(n+1) sum_(i=1)^(n+1) x_i = (n dot 1) / (n(n+1)) sum_(i=1)^n x_i + (x_(n+1))/(n+1) = n / (n+1) overline(x)_n + x_(n+1) / (n+1) = (n overline(x)_n + x_(n+1)) / (n+1)
-  $
-  We do not need to keep all the elements, only the previous average.
+  For some purposes that require the full data but are not strictly real time (e.g., training a new ML model or an historical analysis), heavy retrieval processes are needed, but still possible.
 
-  *Ad-Hoc Query Example - Unique Monthly Users:*
-  A website wants to report unique users over the past month. If logins are elements, we maintain a sliding window of all logins in the last month as a relation `Logins(name, time)`. The ad-hoc SQL query is:
-
-  `SELECT COUNT(DISTINCT(name)) FROM Logins WHERE time >= t;`
+  But for real time queries, we need to keep only a small, continuously updated summary of the stream in RAM.
 ]
 
-=== Issue with Stream Processing
+#warning[
+  From now on, all the proposed solutions does *not* involve loading past history from storage.
+]
 
-Data streams often deliver data very rapidly.
-Streams can be processed efficiently only if the necessary data stays in main memory.
-Thus many problems could be solved if we had enough main memory, but realistic hardware limitations force us to use new techniques.
+There are two primary ways queries are asked on streams:
++ *Standing Queries:*
+  These queries are submitted once but execute _permanently_.
+  They continuously inspect the stream as it flows and produce outputs/_alerts_ when specific conditions are met (e.g., "Alert if the temperature is $> 25°"C"$").
++ *Ad-hoc Queries:*
+  Questions asked _once_ about the current state (like a standard SQL `SELECT`).
 
-There are two general rules for stream algorithms:
+#note[
+  Since we throw away the full stream, answering *arbitrary* queries in real time is impossible.
+  We can build systems that answer specific, _pre-defined_ queries (standing queries) or ad-hoc queries on a _limited sliding window_, but we cannot answer any question about the entire stream history.
+]
 
-1. Often, it is much more efficient (and sometimes absolutely necessary) to get an *approximate answer* rather than an exact solution.
-2. Techniques related to *hashing* are incredibly useful. They introduce randomness to produce approximate answers that are very close to the true result.
+#example[
+  / Standing Query: Computing the average of a stream of numbers.
 
-One major technique is *sampling*.
+    The average of $n$ elements $x_1, ..., x_n$ is defined as:
+    $ overline(x)_n = 1/n sum_(i=1)^n x_i $
+
+    Adding one more element:
+    $
+      overline(x)_(n+1) & = 1/(n+1) sum_(i=1)^(n+1) x_i \
+                        & = (n dot 1) / (n(n+1)) sum_(i=1)^n x_i + (x_(n+1))/(n+1) \
+                        & = n / (n+1) overline(x)_n + x_(n+1) / (n+1) \
+                        & = (n overline(x)_n + x_(n+1)) / (n+1)
+    $
+
+    To answer the query, we do not need to keep all the elements, only the previous average.
+
+  / Ad-Hoc Query: Unique daily users that logged in:
+
+    If logins are elements, we maintain a sliding window of all logins in the last day as a relation `Logins(name, time)`. The ad-hoc SQL query is:
+    `SELECT COUNT(DISTINCT(name)) FROM Logins WHERE time >= t;`.
+    The sliding windows drops old logins as time passes, so we only keep the relevant data for the last day in RAM.
+]
+
+
+Often, it is much more efficient (and sometimes absolutely necessary) to get an *approximate answer* rather than an exact solution.
+
+== Sliding Window Approach
+
+To allow ad-hoc queries on the _recent past_, we can store a *sliding window* in RAM: we buffer only the most recent $n$ elements, or all elements from the last $t$ minutes.
+When new data enters, the oldest data falls out of the window and is discarded.
+
+== Sampling Approach
+
+Another technique is *sampling* the stream.
+The sample should maintain the same _statistical properties_ as the original stream.
 
 #note[
   In statistics, sampling is the selection of a _subset_ of individuals within a population to estimate characteristics of the whole population.
 ]
 
-#example[
-  Let's suppose we take a *10% sample* of our stream.
-  Suppose we are looking for simple events ($s$) and paired/double events ($d$).
+Naively, we could sample the stream by keeping an element with a fixed probability  and discarding it otherwise.
+However, this approach can lead to *distortions* in the sample.
 
-  If we sample at 10%:
-  - Simple events $s$ will appear in our sample as $s/10$.
-  - For double events $d$ (pairs), what is the probability of capturing both parts, or just one?
-    - Probability of capturing both: $1/10 * 1/10 = 1/100$
-    - Probability of capturing exactly one: $2 * (1/10) * (9/10) = 18/100$
+#example[
+  Let's suppose we take a *$10%$ sample* of a stream of user logins ($s$) and logins + likes ($d$) events.
+
+  - For simple login events $s$ will appear in our sample as $s/10$.
+  - For login + like events $d$, what is the probability of capturing both parts, or just one?
+    - Probability of capturing both: $1/10 dot 1/10 = 1/100$
+    - Probability of capturing exactly one: $2 dot (1/10) dot (9/10) = 18/100$
 
   This drastically *distorts* the ratios of events in our sample compared to the true stream.
+
+  / Why does this distort: Suppose in the original stream we have equal numbers of $s$ and $d$ events (ratio 1:1). But in our 10% sample:
+    - Login events $s$: appear with probability $1/10$ (10% survive).
+    - Complete paired events $d$: appear with probability $1/100$ (only 1% survive as intact pairs).
+
+    The sample now contains 10 times more login only events than paired events, completely inverting the original 1:1 ratio into approximately 10:1.
 ]
 
-=== Fixing the Distortion: Sampling by Key
+To fix the distortion, we must sample by a _unifying property_, (e.g., sample users and then take all events of that user), rather than by individual stream elements.
 
-To fix the distortion (like splitting paired events), we must sample by a unifying property, like *User ID* or *Search Key*, rather than by individual, independent stream elements.
-
-So our goal is either we process *all* events from a specific User, or *none* of them.
-
-*Naive Approach:* We randomly select 10% of users and keep a list of their IDs in Main Memory. When a new event arrives, we check if its User ID is on our "accepted" list.
-
-#warning[
-  Storing millions of user IDs would quickly exhaust our RAM.
+#example[
+  If we want a 10% sample of users, we can randomly select 10% of user IDs and then keep all events from those users.
+  This way, the ratio of different event types remains intact within the sample, preserving the statistical properties of the original stream.
 ]
 
-The Solution is hashing.
+Another problem arises: storing in memory all the IDs of the users we want to sample could *saturate* our RAM.
 
-Instead of storing IDs, we use a *Hash Function* $h(x)$ to map each User ID into one of $B$ buckets (e.g., $B = 100$).
-- A hash function is deterministic: the same User ID will *always* hash to the exact same bucket. Therefore, we don't need to remember the user; the hash calculates their "group" on the fly.
-- If we want a *10% sample*, we accept the event only if the hash falls into buckets $0$ through $9$.
-- *Dynamic Resizing:* If the stream volume spikes and we run out of memory, we can dynamically lower the threshold. By accepting only buckets $0$ through $4$, we instantly reduce our sample to 5% without needing to recalculate anything or modify data structures. We democratically "kill" 50% of the currently tracked users to free up RAM.
+The Solution is hashing: instead of storing IDs, we use a *hash function* $h(x)$ to map each User ID into one of $B$ buckets.
+Then we only keep events from users whose hash falls into a specific subset of buckets.
+This approach has two key advantages:
+- A hash function is _deterministic_: the same User ID will always hash to the exact same bucket.
+  Therefore, we don't need to store the IDs, only the bucket numbers.
+- _Dynamic Resizing:_ we can dynamically lower the threshold of accepted buckets to adjust the sampling rate without changing the hash function or the underlying data structure.
+
+#example[
+  With $B=100$ buckets, we can easily adjust our sampling rate by changing the number of accepted buckets:
+  - If we want a $5%$ sample, we accept the event only if the hash falls into buckets $[0, 4]$.
+  - If we want a $10%$ sample, we accept the event only if the hash falls into buckets $[0, 9]$.
+
+  This can change based on the current load of the system.
+]
 
 == Filtering Streams (Set Membership)
 
