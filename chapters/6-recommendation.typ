@@ -26,9 +26,9 @@ Two big approaches to recommendation systems exist:
 - *Content-based approach*: Suggestions based on the *actual content*.
   Users get recommendations based on their explicit interest.
   We need to know both the *interest* of a user and a *description* of each item.
-- *Collaborative filtering approach*: The system does *not know anything* on the content of items or interests of a user.
+- *Collaborative filtering approach*: The system does *not know anything* about the content of items or interests of a user.
   Recommendations are based on the *similarity* between users.
-  A user gets recommended the items a similar user interacted with.
+  A user gets recommended items that similar users interacted with.
 
 #example[
   *Content-based:* A user who rates highly romantic comedies receives recommendations for other romantic comedies with similar actors, directors, or themes.
@@ -51,12 +51,12 @@ The entries of the matrix could be binary (like / don't like), an integer scale 
 The goal of the system is to *predict* the *missing values* of that matrix.
 
 #note[
-  Most of the times, it could _not_ be necessary to fill the _whole matrix_, but to find only some entries that are likely high and recommend these ones.
+  Most of the time, it is _not_ necessary to fill the _whole matrix_, but only to find some entries that are likely to be high and recommend those.
 ]
 
 Without that matrix, recommendations are almost impossible.
 Again, two main approaches to *populate* that matrix exist:
-- Ask explicitly users to *rate items* (e.g. rating a movie), better quality (the rating has a scale) but less effective as not all users do that.
+- Ask users explicitly to *rate items* (e.g. rating a movie), better quality (the rating has a scale) but less effective as not all users do that.
 - Make *inference* from users' interactions (e.g. movies the user clicked on or watched the trailer), less quality (the value is boolean) but applicable to all users.
 
 == Content-based Approach
@@ -76,14 +76,14 @@ These profiles can be defined as vectors, so that the *cosine similarity* betwee
 
 === Building Items Profile
 
-Most of the times, items have intrinsic *boolean* properties that can be used for recommendations.
+Most of the time, items have intrinsic *boolean* properties that can be used for recommendations.
 
 #example[
   Movies can be represented by a huge vector of all actors, where each entry is binary, describing if an actor appeared in that movie.
   The same thing can be done for directors.
 ]
 
-Another class of features are the *numerical* characteristics.
+Another class of features is the *numerical* characteristics.
 It is completely fine to put these in the vector, but these numerical values need to be *scaled* so neither the boolean nor the numerical features dominate.
 The scaling factor depends on the context and the semantics of the numerical value.
 
@@ -107,7 +107,7 @@ What about documents?
 An idea could be to identify a document by its *most significant words*, the rarest words.
 First, we eliminate *stop words*: the most common words (e.g. "and", "or", "the"), which carry no topical information.
 For the remaining words, we need to differentiate between rare _meaningless_ words (like "notwithstanding") and rare _meaningful_ words.
-The observation is that rare meaningful words are likely to appear multiple times in the same document, while rare _meaningless_ word not.
+The observation is that rare meaningful words are likely to appear multiple times in the same document, while rare _meaningless_ words do not.
 
 #example[
   Both _albeit_ and _offside_ are rare words.
@@ -141,7 +141,7 @@ One way to achieve that is to *correlate* the data from the utility matrix with 
 This technique heavily depends on the context and the semantics.
 
 #example[
-  If all the information we have for a user is which movie he clicked on (*boolean*), then we can populate its profile putting at $1$ all the actors that play in any movie he clicked on.
+  If all the information we have for a user is which movie they clicked on (*boolean*), we can populate their profile by setting to $1$ all the actors in any movie they clicked on.
 ]
 
 #example[
@@ -209,7 +209,7 @@ This technique heavily depends on the context and the semantics.
     $
     $ cos(theta) = 1.5 / (sqrt(4.5) dot 1) = 1.5 / 2.12 approx 0.707 $
 
-    A large positive cosine fraction (angle $approx 45 degree$) indicates a small cosine distance. Movie 3 is a *good recommendation* because it features an actor the user strongly likes, and none that they dislike.
+    A large positive cosine fraction (angle $approx 45°$) indicates a small cosine distance. Movie 3 is a *good recommendation* because it features an actor the user strongly likes, and none that they dislike.
 ]
 
 #example(title: "Complete Example: Document Recommendations")[
@@ -236,113 +236,125 @@ This technique heavily depends on the context and the semantics.
 
 == Collaborative Filtering
 
-We describe a user based on the ratings he espressed: a row of the matrix.
-
-Similarly, a column, so the ratings of users to a product can describe the product.
-
-Finding similar users means finding similar rows in that matrix.
-We can try using different similarity measures:
-
-- Jaccard distance:
-  how do we turn a row of ratings (that can contain some null values) into a set?
-  We can construct a set of only the movies that are rated (ignoring the actual rating).
-  This is not a really good idea exactly because of that, we can have users really similar that rated the same movies, but in a completely different way, so we discart that idea.
-- Cosine distance:
-  how do we compute the distance for values that are null? we can treat that as zeros.
-
-We have no definitive recipe, there are a lot of variables:
-- some user might use a different scale (be more tight on the ratings or more relaxed), users have different rating abits
-- we need to tweak the missing values
-
-So, instead of doing similarity on ratings, we apply a tresholding approach.
-All values equal or above the treshold become $1$, all the others $0$.
-After that, we can simply use similarity like Jaccard to compute the similarity.
-
-Another approach that keeps in mind the fact that users can have different rating habits.
-All ther rating of a user gets "normalized" based on the average ratings of that user.
-
-=== Actual Recommendation
-
-What we do once we know that two things are very similar?
-Too similar can be negative: we don't want to buy two things that are very very similar.
-
-So, how do we actually perform recommendation?
-
-...
-
-Similarity can be difficult because the rows are very very sparse.
-So we apply before a clustering process.
-
-After clustering, we can obtain a "compressed" matrix.
-We can decide the dimension on which to cluster (it can be very different).
-
-#example[
-  A song is tipycally of one genre (a song cannot be both classical and rock).
-  So a cluster of classical and rock songs is very unlikely.
-
-  But a user can like both rock and classical, so a cluster can exist.
+#informally[
+  Instead of finding similar user-item pairs based on their content and preferences, the idea is to find _similar users_ and recommend items to each other based on what they interact with.
 ]
 
-But how do we get back to recommendantion to a specific user after applying similarity on the compressed matrix?
+Similar users are found by looking at the _utility matrix_.
+Some *preprocessing* is needed to make the matrix more suitable for similarity measures, such as _normalization_ (e.g., subtracting the user's average rating from their ratings to account for different rating habits) and _handling missing values_ (e.g., treating them as zeros or using a thresholding approach).
 
-...
+Different similarity measures can be applied:
 
-== Alternating List Squares Algorithm (ALS) - $U$-$V$ Decomposition
+- *Jaccard distance*:
+  suitable for _binary_ data.
+  When the utility matrix is not binary, _thresholding_ can be applied to convert ratings into binary values.
 
-We have an utility matrix $M$, with some gaps, which are the recommendations we need to perform.
+  #example[
+    Different users have different _rating habits_: some rate movies with 5 stars, while others use only 1-3 stars.
+    By applying a threshold (e.g., considering everything above user average as "liked" and everything below as "not liked"), we can convert the utility matrix into a binary matrix.
+  ]
 
-Instead of directly associating a movie to a user, we try to find some latent dimension, for example the genre.
-Then we can use that latent dimension to perform suggestions.
+- *Cosine distance*:
+  suitable for numerical data, where the _magnitude_ does not matter.
+  The cosine distance ignores the positions where both vectors contain $0$ (good for sparse matrices), but we need to define the behavior for missing values (e.g., treating them as zeros).
 
-To do that, we try to "decompose" the matrix into two smaller matrices (that must be product compatible):
+  #example[
+    When vectors represent the number of times a user interacted with items, the cosine distance is appropriate because it captures the similarity in interaction patterns regardless of the absolute number of interactions.
+
+    E.g., a user who interacted 9 times with Sport and 1 time with Politics (vector [9,1]) is similar to a user who interacted 90 times with Sport and 10 times with Politics (vector [90,10]), because the _magnitude_ does not matter.
+  ]
+
+If the matrix is too big, it can be difficult to compute the similarity between all pairs of users.
+
+#note[
+  Some techniques discussed in Section #link-section(<similarity>) can be used, such as LSH.
+  In this chapter we explore different approaches that try to *fill* the utility matrix.
+]
+
+=== Clustering
+
+Both users and items can be *clustered* based on their profiles, using any technique.
+
+This approach _aggregates_ and compresses the utility matrix: when two users are merged into a cluster, their corresponding rows in the utility matrix are merged into a single row.
+If multiple entries are non-null, we can merge them by taking various approaches (e.g., averaging).
+
+We can _repeat_ this process iteratively (clustering the resulting clusters) until the entire matrix is filled with values.
+Then we can simply recommend the _top rated_ item to each user, using the rating of the cluster they belong to.
+
+#note[
+  We could cluster both on users and items, producing _different results_.
+  Clustering items will produce more defined clusters, while clustering users will produce more fuzzy clusters.
+
+  #example[
+    _Items_: a song is typically of one genre (a song cannot be both classical and rock).
+    So a cluster of classical and rock songs is very unlikely.
+
+    _Users_: a user can like both rock and classical, so a cluster can exist.
+  ]
+]
+
+=== $U$-$V$ Decomposition
+
+Another approach tries to find a *latent dimension* to fill the utility matrix.
+The gaps in the utility matrix are the ratings we need to _guess_.
+
+To do that, we try to _decompose_ the matrix into two _much smaller_ matrices (that must be product compatible):
 $ underbrace(M, r times c) = underbrace(U, r times d) dot underbrace(V, d times c) $
 
-If we can find, even approximately, the entries of $U$ and $V$, then we can calculate the actual product and find the missing values of $M$.
+Finding some values of $U$ and $V$ that produce a product _close_ to the original matrix $M$ (for the known entries), we can use that product to fill the missing values of $M$.
 
-We need to calculate the distance between two matrices, to understan how the product of the two smaller matrices is similar to the actual matrix $M$.
-$ "RMSE"(M, P) = sqrt(mr(1/(r c)) sum_(i,j) (u_(i k) - p_(i j))^2) $
+To find how _close_ we are to the original matrix $M$, we can use the Root Mean Square Error (*RMSE*):
+$ "RMSE"(M, P) = sqrt(1/("# entries") sum_(i,j) (m_(i j) - p_(i j))^2) $
+where $M$ is the original utility matrix, $P$ is the product of $U$ and $V$, both $r times c$.
 
-Instead of $1/(r c)$, we should put the number of known entries, and we iterate only over known entries.
+=== Alternating Least Squares Algorithm (ALS)
 
-But how do we come up with $U$ and $V$?
+The ALS algorithm iteratively improves $U$ and $V$ by *optimizing* one element at a time, updating each element to minimize the RMSE.
 
-- We start naively: $U$ and $V$ are initally both formed by all $1$s.
-  Then calculate the RMSE.
+#informally[
+  The key idea: when changing a single element of $U$ or $V$, only a small part of the product matrix $P$ changes.
+  We can compute the _optimal value_ for that element by finding where the _derivative_ with respect to that element _equals zero_.
+]
 
-- Then we select and element of the first matrix $U$, and replace $1$ with a value $x$ that brings the value of the product matrix closer to the actual matrix $M$.
+/ Initialization:
+  We start naively by initializing both $U$ and $V$ with all $1$s, then compute the initial RMSE.
 
-  Changing a value of the first row of $U$, changes the values only of the first row of the product $M'$.
-  To minimize the RMSE, we can compute only the part that changes and calculate the first derivative.
-  Then we choose that value for $x$.
+  A better _heuristic_ (not guaranteed to perform well) is to initialize both matrices with $sqrt(overline(m)/d)$, where $overline(m)$ is the average of all known entries.
 
-- Changing a value of the second matrix $V$, only a column of the product matrix changes.
-  We repeat the same thing, we nullify the first derivative and find the best new value.
+/ Updating element of $U$: When we change a single element $u_(r s)$ in row $r$ of $U$, only row $r$ of the product matrix $P$ changes.
 
-We can generalize that process of changing values of $u$ or $v$:
-$ underbrace(U, n times d) dot underbrace(V, d times m) = underbrace(P, n times m) $
-$ P_(r j) = sum_(w=1)^d u_(r k) v_(k j) = sum_(k != s) u_(r k) v_(k j) + u_(r s) v_(s j) $
+  #note(title: "Only row " + $r$ + " changes?")[
+    In matrix multiplication $P = U dot V$, each element of $P$ is computed as:
+    $ p_(i j) = sum_k u_(i k) dot v_(k j) $
 
-We want to minimize the difference with the original matrix:
-$
-  Delta(x) = sum_j (m_(r j) - p_(r j))^2 \
-  Delta'(x) = sum_j - cancel(2) (m_(r j) sum_(u != s) u_(r k) v_(k j) - x v_(s j)) v_(s j) = 0
-$
-...
+    This is the dot product of row $i$ from $U$ with column $j$ from $V$.
 
-So an element of the matrix $U$ can be changed with $x$:
-$ x = (sum_j (m_(r j) - sum_(k != s) u_(r k) v_(k j)) v_(s j)) / (sum_j v_(s j)^2) $
+    When we change $u_(r s)$, it only appears in products involving row $r$ of $U$, any other row $i != r$, uses a different row of $U$.
 
-Same thing for $V$ and $y$:
-$ y = (sum_i (u_(i r)(m_(i s) - sum_(k != r) u_(i k) v_(k s)))) / (sum_i u_(i r)^2) $
+    The same applies to columns of $V$: changing $v_(s j)$ only affects products involving column $j$ of $V$.
+  ]
 
-A small improvement: instead of starting with matrices of all $1$s, we start with all $sqrt(overline(m)/d)$.
-This is an heuristic, it is not guaranteed to perform well.
+  We can find the optimal value $x$ by setting the derivative of the squared error (for that row) to zero:
+  $ x = (sum_j (m_(r j) - sum_(k != s) u_(r k) v_(k j)) v_(s j)) / (sum_j v_(s j)^2) $
 
-We have all elements, and we can start optimizing the values of $U$ and $V$, various approach are possible:
-- update all values of $U$ and then all values of $V$
-- pick a random matrix and pick a random column/row and update that
+/ Updating element of $V$: Similarly, when we change a single element $v_(s j)$ in column $j$ of $V$, only column $j$ of $P$ changes.
 
-We stop when the difference between the product matrix and the original matrix is "small enough" (or we get stuck).
-This is another local optimization, we could get stuck, to avoid that we could apply different techniques:
-- start all over again, with a different intialization (and some noise)
-- run the algorithm several times and use an average as the result
+  The optimal value $y$ is:
+  $ y = (sum_i (m_(i j) - sum_(k != s) u_(i k) v_(k j)) u_(i s)) / (sum_i u_(i s)^2) $
+
+/ Iteration:
+
+  There are different strategies to update the elements of $U$ and $V$:
+  - Alternating between an element of $U$ and an element of $V$.
+  - Updating all elements of $U$ first, then all elements of $V$.
+  - Updating elements in a random order.
+
+  We stop when the RMSE between $P$ and $M$ is "small enough" or shows negligible improvement.
+
+#warning[
+  This is a *local optimization*: we may get stuck in a local minimum instead of finding the global optimum.
+  To mitigate this, we can:
+  - Run the algorithm multiple times with different random initializations and average the results
+  - Add noise to the initialization to escape shallow local minima
+  - Use different update strategies
+]
