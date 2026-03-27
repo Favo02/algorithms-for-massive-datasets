@@ -188,299 +188,338 @@ This approach has two key advantages:
 
 == Filtering Streams (Set Membership)
 
-Given a universe of items and a massive trusted subset $S$, we want to answer a simple question for every new element $x$ in the stream: *Is $x in S$?*
+Given a universe of items $U$ and a subset $S subset.eq U$, we want to check whether an element $x$ of the stream *is in* $S$: $x in S$?
+When the size of the subset $S$ is huge, we cannot store it in RAM to check membership with a standard data structure (e.g., hash table or search tree).
 
 #example[
-  *The Memory Problem (Email Filtering):* \
-  Let $S$ be a list of trusted email addresses ($|S| = 10^9$). Storing 1 billion strings would require dozens of Gigabytes. If we only have 1 GB of RAM, a standard search tree or hash table simply won't fit. We need to drastically compress the representation of $S$.
+  *Email Filtering:* Let $S$ be a list of trusted email addresses ($|S| = 10^9$).
+  Storing 1 billion strings would require dozens of Gigabytes.
+  We want to filter emails not in $S$ (e.g., spam) without storing the entire list of trusted emails in RAM.
 ]
 
-=== Bloom Filters: Storing "Footprints"
+=== Bloom Filters
 
-A Bloom filter solves the memory problem by using a bit-vector (bitmap) coupled with hash functions. Instead of storing the actual elements, it stores their "footprints".
-Because multiple elements might accidentally leave the same footprint (hash collisions), we must accept a trade-off.
+The solution is a *Bloom Filter*, a _probabilistic_ data structure that allows us to check set membership with a compact representation, at the cost of allowing some _false positives_ (FP).
 
-- *The Trade-off:* We accept *False Positives (FP)* (e.g., occasionally predicting an unknown email is trusted, delivering spam to the inbox). However, we guarantee strictly *NO False Negatives (FN)*. If an email is truly in $S$, the filter will never drop it.
+A Bloom filter solves the memory problem by using a bit-vector (_bitmap_) coupled with _hash_ functions.
+Instead of storing the actual elements, it stores their _footprints_.
+Because multiple elements might accidentally leave the same footprint (hash collisions), we must accept *False Positives (FP)* (e.g., occasionally predicting an unknown email is trusted, delivering spam to the inbox).
+However, we guarantee strictly *no False Negatives (FN)* (e.g., if an email is truly in $S$, it will never be dropped by mistake).
 
-*1. Construction (Pre-processing $S$):*
-1. Initialize an array of $m$ bits to 0.
-2. Choose $k$ independent hash functions.
-3. For every key in our trusted list $S$, hash it with all $k$ functions. Set the bits at those resulting indices to 1.
-  $ forall x in S, quad forall i in [1, k], quad b[h_i (x)] = 1 $
++ / Construction (Pre-processing $S$):
+  - Initialize an array $b$ of $m$ bits to 0.
+  - Choose $k$ independent hash functions.
+  - For every key in our trusted list $S$, hash it with all $k$ functions.
+    Set the bits at those resulting indices to 1:
+    $ forall x in S, quad forall i in [1, k], quad b[h_i (x)] = 1 $
 
-*2. Querying the Stream (Checking $x$):*
-As the stream flows, we check if a new element $x$ is in $S$ by hashing it with the same $k$ functions.
-- If *any* corresponding bit is 0, the footprint is incomplete. We know for certain $x in.not S$ (Zero False Negatives).
-- If *all* corresponding bits are 1, we predict $x in S$. Note that these bits might have been set to 1 by a combination of other elements, which is exactly what causes a False Positive.
++ / Querying the Stream (Checking $x$):
+  As the stream flows, check if an element $x$ is in $S$ by hashing it with the same $k$ functions.
+  - If *any* corresponding bit is 0, the footprint is incomplete: we know for certain $x in.not S$ (Zero False Negatives).
+  - If *all* corresponding bits are 1, we predict $x in S$.
+    Note that these bits might have been set to 1 by a combination of other elements, which is exactly what causes a False Positive.
 
-=== False Positive Rate (FPR) Math
+The time complexity for checking an element is constant $O(k)$.
+
+=== False Positive Probability
+
 To understand how likely a False Positive is, we calculate the probability that a specific bit is 1 just by chance after inserting $n$ elements:
 
-- Probability a specific bit is *not* flipped to 1 by a single hash function: $(1 - 1/m)$
-- Probability a bit is *not* flipped after inserting $n$ elements using $k$ hash functions: $(1 - 1/m)^(k n)$
-- Using the limit for $m$ to infinity, we approximate this as: $e^(-k n/m)$
-- Therefore, the probability that a bit *is* 1 is: $1 - e^(-k n/m)$
+$
+       PP("bit" = 1 | "single hash") & = 1/m \
+       PP("bit" = 0 | "single hash") & = 1 - (1/m) \
+          PP("bit" = 0 | "k hashes") & = (1 - 1/m)^(k) quad   &   #comment("all hashes are independent") \
+  PP("bit" = 0 | "after n elements") & = (1 - 1/m)^(k n) quad & #comment("all elements are independent") \
+  PP("bit" = 0 | "after n elements") & approx e^(-k n/m) quad &    #comment("approximation for large m") \
+                       PP("bit" = 1) & = 1 - e^(-k n/m) \
+$
 
-For a false positive to occur, all $k$ hash functions must hit bits that are already 1. The False Positive Rate (FPR) is:
-$ "FPR" = (1 - e^(-k n/m))^k $
+Having already inserted $n$ elements, to get a False Positive, all $k$ hash functions must hit bits that are already 1:
+$ PP("FP") approx (1 - e^(-k n/m))^k $
 
 #note[
-  To lower the FPR, you either need to increase $m$ (devote more RAM to the bit array to reduce crowding) or optimize the number of hash functions $k$. Time complexity for checking an element remains constant $O(k)$, which is perfect for fast streams.
+  To lower the FPR, either increase $m$ (use more RAM for the bit array to reduce crowding) or optimize the number of hash functions $k$.
 ]
 
-= Counting Distinct Elements
+== Counting Distinct Elements
 
-How do we count the number of *unique* elements in a massive stream without storing them? We use the *Flajolet-Martin Algorithm*.
-
-*The Intuition:* If we see the same element 100 times, we don't want to count it 100 times. By applying a *Hash Function*, the same element will always produce the exact same binary string. Thus, duplicates don't affect our measurements.
-
-We look at the binary representation of the hash values and focus on the *tail length* ($R$): the number of trailing zeroes.
-For example:
-
-- `00110` has $R = 1$.
-- `01000` has $R = 3$.
+Given a stream, we want to count the number of *unique* elements it contains.
+When the amount of distinct elements is huge, we cannot store them in RAM to count them with a standard data structure (e.g., hash set or search tree).
 
 #example[
-  *The Coin Toss Analogy:* Getting a hash that ends in `000` (probability $1/8$) is like flipping a coin and getting tails 3 times in a row. If you see such a rare event, you can probabilistically guess you've flipped the coin about $8$ times ($2^3$).
+  A search engine might want to know how many unique queries it receives in a day.
+  With billions of queries, storing them all to count distinct ones is infeasible.
 ]
 
-=== The Algorithm
-```pseudocode
-max_r = 0
-for all x in stream:
-  r = tail_length(hash(x))
-  if r > max_r:
-    max_r = r
-return 2^(max_r)
-```
+=== Flajolet-Martin Algorithm
 
-=== Why the Math Works
-The probability that a single hash ends in exactly $r$ trailing zeros is $2^(-r)$.
+The intuition is to exploit the randomness of *hash* functions, specifically:
+- _Determinism_: the same element always produces the same hash value
+- _Uniform distribution_: hash values are uniformly distributed across the binary space
+
+We look at the binary representation of the hash values and focus on the *tail length* ($R$): the number of _trailing_ zeroes.
+For example, `00110` has $R = 1$, while `01000` has $R = 3$.
+
+#informally[
+  If we see a hash with a long tail of zeroes (e.g., `000`), it is a very rare event (probability $1/8$).
+  So we estimate that we must have seen about $8$ distinct elements to encounter such a rare hash.
+]
+
+#pseudocode(
+  [$R_"max" <- 0$],
+  [*Forall* $x$ in stream *do*],
+  indent(
+    [$r <-$ tail_length($h(x)$)],
+    [$R_"max" <- max(R_"max", r)$],
+  ),
+  [*Return* $2^(R_"max")$],
+)
+
+=== Correctness Probability
+
+The probability that a single hash ends in exactly $r$ trailing zeros is $1 / 2^r = 2^(-r)$.
 If we have $m$ *distinct* elements, the probability that *none* of them map to a hash with $r$ trailing zeros is:
 $ (1 - 2^(-r))^m approx e^(-m 2^(-r)) $
 
-Let's look at how $m$ (number of unique elements) relates to $2^r$ (the rarity of the hash):
-- If $m >> 2^r$, we have made many attempts. We will *definitely* see an element with $r$ zeros.
-- If $m << 2^r$, we have made very few attempts. We will *rarely* see an element with $r$ zeros.
+$
+           PP("single hash has" r "trailing zeros") & = 1/2^r = 2^(-r) \
+       PP("single hash has not" r "trailing zeros") & = 1 - 2^(-r) \
+  PP("none of" m "elements has" r "trailing zeros") & = (1 - 2^(-r))^m) \
+  PP("none of" m "elements has" r "trailing zeros") & approx e^(-m 2^(-r)) \
+$
 
-*The Crossover Point:* The mathematical threshold where we go from "rarely seeing it" to "definitely seeing it" happens exactly when our number of attempts equals the rarity of the event: $m approx 2^r$.
+The number of distinct elements $m$ influences how likely we are to see a hash with $r$ trailing zeros:
+- If $m >> 2^r$, we have made many attempts, $PP -> 1$
+- If $m << 2^r$, we have made very few attempts, $PP -> 0$
 
-Because of this, if the absolute longest tail we recorded during the stream is $R_"max"$, it strongly implies we processed approximately $2^(R_"max")$ distinct elements to achieve that record. Thus, $2^(R_"max")$ is our solid estimator for $m$.
+Because of this, if the absolute longest tail we recorded during the stream is $R_"max"$, it implies we processed approximately $2^(R_"max")$ distinct elements to achieve that record.
 
 #warning[
-  The Outlier Problem: This basic method is extremely sensitive. One single "lucky" hash with 20 trailing zeroes will completely ruin the estimate, predicting over a million elements even if we only saw 10!
-
-  *The Fix (Median of Averages)*:
-  1. Use multiple independent hash functions.
-  2. Group them into small buckets and compute the average estimate within each group (this smooths out small variations).
-  3. Take the median of those group averages. The median strictly ignores extreme outliers, giving a robust final estimate.
+  The *outlier* Problem: This basic method is extremely sensitive to outliers.
+  One single "lucky" hash with 20 trailing zeroes will completely ruin the estimate even if we have only 100 distinct elements in the stream.
 ]
 
-= Stream Moments
+The solution is to use multiple independent hash functions and take the *median* (not influenced by outliers) of their estimates to get a more stable and accurate result.
+This poses another problem: this will result in only power of two estimates.
 
-Moments are statistical metrics used to capture the "shape" or frequency distribution of items in a stream.
+To fix this, usually the final estimate is calculated as the *average* of the *median* estimations from various _groups_ of hash functions, which allows for a more continuous range of estimates.
+
+Both the space and time complexity are $O(k)$, where $k$ is the number of hash functions.
+
+== Stream Moments
+
+Moments are statistical metrics used to capture the _shape_ of a distribution, based on the *frequencies* of distinct items in a stream.
+
 Let $m_i$ be the number of occurrences (frequency) of the $i$-th distinct item.
-
 The $k$-th moment is defined as the sum of all frequencies raised to the power of $k$:
 $ sum_i (m_i)^k $
 
-By changing the exponent $k$, we apply a different "magnifying glass" to our data:
+By changing the exponent $k$, we inspect a different aspect of the stream's distribution:
 
-- *0th Moment ($k=0$):* $sum_i (m_i)^0$
-  Since any number to the power of $0$ is $1$, we are simply adding $1$ for every unique item we see, regardless of its frequency. This represents the *Number of distinct elements* (exactly what the Flajolet-Martin algorithm estimates!).
+- *0th Moment* ($k=0$): $sum_i (m_i)^0$
+  Since any number to the power of $0$ is $1$, we are simply adding $1$ for every unique item we see, regardless of its frequency. This represents the *number of distinct elements* (what the Flajolet-Martin algorithm estimates).
 
-- *1st Moment ($k=1$):* $sum_i (m_i)^1$
-  Since any number to the power of $1$ is itself, we are just summing all the frequencies together. This gives us the *Total length of the stream*.
+- *1st Moment* ($k=1$): $sum_i (m_i)^1$
+  Since any number to the power of $1$ is itself, we are just summing all the frequencies together. This gives us the *total length of the stream*.
 
-- *2nd Moment ($k=2$):* $sum_i (m_i)^2$
-  This is called the *Surprise Number*. By squaring the frequencies before summing them, we disproportionately amplify the weight of items that appear very often. It measures how uneven, skewed, or "surprising" the data distribution is.
+- *2nd Moment* ($k=2$): $sum_i (m_i)^2$
+  By squaring the frequencies before summing them, we disproportionately amplify the weight of items that appear very often.
+  It measures how uneven or skewed the data distribution is.
+  This is called the *surprise number*.
 
+  #example[
+    2nd Moment Example:
+    Suppose a stream has 100 elements and 11 distinct item types.
 
-#example[
-  Let's see why squaring the frequencies captures the unevenness of the stream.
-  Suppose a stream has 100 elements and 11 distinct item types.
+    - Scenario A (almost uniform distribution):
+      10 items occur 9 times, and 1 item occurs 10 times.
+      $ M_2 = 10 dot (9^2) + 1 dot (10^2) = 810 + 100 = 910 $
 
-  *Scenario A: Most uniform distribution* (Everything is balanced)
-  10 items occur 9 times, and 1 item occurs 10 times.
-  $ M_2 = 10 dot (9^2) + 1 dot (10^2) = 810 + 100 = 910 $
+    - Scenario B (least uniform distribution, highly skewed):
+      1 item occurs 90 times, and 10 items occur 1 time.
+      $ M_2 = 1 dot (90^2) + 10 dot (1^2) = 8100 + 10 = 8110 $
 
-  *Scenario B: Least uniform distribution* (Highly skewed)
-  1 item occurs 90 times, and 10 items occur 1 time.
-  $ M_2 = 1 dot (90^2) + 10 dot (1^2) = 8100 + 10 = 8110 $
+    The surprise number in Scenario B is huge, representing the highly skewed distribution.
+  ]
 
-  The Surprise Number in Scenario B is huge because squaring $90$ creates a massive number ($8100$). This mathematically highlights that the stream is dominated by a single repeating element.
-]
+Calculating the moments with enough RAM is trivial, but when the number of distinct items is huge, we cannot maintain exact frequency counters for all of them.
 
-== The AMS Algorithm (Alon-Matias-Szegedy)
+=== Alon-Matias-Szegedy Algorithm (AMS)
 
-If we don't have enough Main Memory to maintain exact frequency counters for *all* distinct elements, we can't calculate the exact Second Moment.
-*The Solution* is to use the AMS algorithm to *estimate* the Second (and higher) Moments by randomly sampling just a few specific positions in the stream.
+The AMS algorithm *estimates* the second (and higher) moments by randomly _sampling_ just a few specific positions in the stream.
 
-*How it works:* We decide in advance to track a fixed number of variables (more variables = higher accuracy).
+The algorithm decides in advance to track a _fixed number_ of _variables_, the more variables used, the higher the accuracy of the estimate.
 For each selected variable $X$, we track two things:
-1. *The element* found at the randomly chosen position.
-2. *The value ($v$):* A counter that tracks how many times that specific element appears from that position *onwards* until the end of the stream.
+1. The *element* $e$ found at the chosen position.
+2. The *number of occurrences* $v$ of that element from that position onwards until the end of the stream.
 
 #warning[
-  *Stream limitation:* I cannot access the stream like an array or vector! I only see the *current* element passing by.
-  Therefore, when my chosen random position arrives, I must explicitly save that element in memory so I can compare it against all future incoming elements to increment its counter $v$.
+  Because the stream is not saved (and cannot be accessed like an array), these variables needs to be defined beforehand.
 ]
 
+The *estimator formula* for second moment is then applied to the counters $v$ of each variable $X$, where $n$ is the total stream length:
+$ "estimate" = n (2v - 1) $
+
+#warning[
+  The algorithms needs to know the total stream length $n$ in advance to pick random positions uniformly and to apply the estimator formula correctly.
+]
+
+The second moment is estimated by taking the *average* of all the $k$ independent variables $X$ we tracked:
+$ hat(F_2) = (1/k) sum_(i=1)^k "estimate"_i $
+
 #example[
-  *Step 1: The True Moment (for comparison)* \
-  Consider a stream of length $n=15$:
+  Consider a stream of length $n = 15$:
   $ a, b, c, b, d, a, c, d, a, b, d, c, a, a, b $
 
   The true frequencies are:
-  - $m(a)=5$
-  - $m(b)=4$
-  - $m(c)=3$
-  - $m(d)=3$
+  - $m(a)=5, space m(b)=4, space m(c)=3, space m(d)=3$
 
   The exact second moment is:
   $ F_2 = sum_i (m_i)^2 = 25 + 16 + 9 + 9 = 59 $
 
-  *Step 2: The AMS Estimation* \
-  Let's say we only have memory to track 3 variables. We pick 3 random positions uniformly:
-  - Position 3 (element `c`)
-  - Position 8 (element `d`)
-  - Position 14 (element `a`)
+  To estimate $F_2$ with the AMS algorithm, we decide to track only 3 variables (due to RAM constraints), picking 3 random positions uniformly from the stream:
+  - Position 3 (element $c$)
+  - Position 8 (element $d$)
+  - Position 13 (element $a$)
 
-  Now we count their occurrences *from that point forward* ($v$):
-  - For pos 3 (`c`): It appears at pos 3, 7, 12. So, $v_1 = 3$.
-  - For pos 8 (`d`): It appears at pos 8, 11. So, $v_2 = 2$.
-  - For pos 14 (`a`): It appears at pos 14, 15 (Wait, the 15th is 'b'. 'a' only appears at 14). So, $v_3 = 1$.
+  Now we count their occurrences from that point forward ($v$):
+  - For pos 3 ($c$): pos 3, 7, 12. $v_1 = 3$.
+  - For pos 8 ($d$): pos 8, 11. $v_2 = 2$.
+  - For pos 13 ($a$): pos 13 and 14. $v_3 = 2$.
+
+  The estimates for each variable are:
+  - $X_1 = 15(2 dot 3 - 1) = 15(5) = 75$
+  - $X_2 = 15(2 dot 2 - 1) = 15(3) = 45$
+  - $X_3 = 15(2 dot 2 - 1) = 15(3) = 45$
+
+  The final estimate is the average:
+  $ hat(F_2) = (75 + 45 + 45) / 3 = 55 $
+
+  The estimate is close to the true $F_2$ of $59$, while tracking only 3 variables.
 ]
 
-=== The Estimator (Second Moment)
+=== Algorithm Correctness
 
-Now that we have our sample variables, how do we turn a simple counter $v$ into an estimate of the entire stream's Second Moment? We use the *Estimator formula*.
+The *expected value* (the statistical average) of every random variable $X$ is exactly the true second moment $F_2$.
+By tracking multiple independent variables and averaging their estimates, we can get an accurate estimate of $F_2$ with high probability.
+$ E[X] = F_2 = sum m_i^2 $
 
-For each selected position, we define a random variable $X$:
-$ X = n (2v - 1) $
-Where:
-- $n$ is the total stream length (which we assume is known and tracked with a basic counter).
-- $v$ is the count of the element from the chosen position onwards.
+#proof[
+  By definition, the expected value is the sum over all possible positions $p$ of the probability times the variable's value:
+  $
+    E[X] & = sum_(p=1)^n mr(PP("picking position" p)) dot n(2v_p - 1) \
+         & = sum_(p=1)^n cancel(mr(1/n)) dot cancel(n)(2v_p - 1) quad quad #comment("picking any position is uniform") \
+         & = sum_(p=1)^n (2v_p - 1)
+  $
 
-#note[
-  *Why this formula?* The mathematical proof (shown below) guarantees that the *expected value* (the statistical average) of this random variable $X$ is exactly the true Second Moment ($F_2$).
+
+  Instead of summing position by position (ranging $p=1$ to $n$), we can rearrange the sum by grouping the terms by *distinct elements*.
+
+  #example[
+    Given the stream:
+    $ underbrace(a, p_1), underbrace(b, p_2), underbrace(a, p_3), underbrace(b, p_4) $
+
+    The sum of the variables for these positions is:
+    $ (2 v_1 -1) + (2 v_2 -1) + (2 v_3 -1) + (2 v_4 -1) $
+
+    We can rearrange by the values of the elements:
+    $ (2 v_a_1 - 1) + (2 v_a_2 - 1) + (2 v_b_1 - 1) + (2 v_b_2 - 1) $
+  ]
+
+  Reading the $v_i$, which counts the occurrences of the element from the chosen position to the end of the stream, it goes form $1$ to the actual frequency of that element $m_i$: 1, 2, ..., $m_i$.
+
+  Each of this values of $v$ contributes to the sum with a multiplier of $(2v - 1)$, which generates the sequence of odd numbers: $1, 3, 5, 7, ..., (2m_i - 1)$.
+
+  #theorem(title: "Lemma: Sum of Odd Numbers")[
+    The sum of the first $k$ odd numbers is exactly equal to $k^2$.
+    $ sum_(j=1)^k (2j - 1) = k^2 $
+  ]
+
+  Using the lemma, we can conclude that the contribution of each distinct element $i$ to the expected value is:
+  $
+    sum_(j=1)^(m_i) (2j - 1) & = m_i^2
+  $
+
+  Each element contributes to the expected value with its frequency squared, so when we sum over all distinct items, we get:
+  $
+    E[X] & = sum_(i in "items") sum_(j=1)^(m_i) (2j - 1) \
+         & = sum_(i in "items") m_i^2 \
+         & = F_2 space qed
+  $
 ]
-
-*Applying the formula to our example ($n=15$):*
-Let's calculate the estimate $X$ for each of the 3 positions we picked.
-
-- *Variable 1 (pos 3, `c`):* From pos 3 onwards, `c` appears 3 times ($v=3$).
-  $ X_1 = 15(2 dot 3 - 1) = 15(5) = 75 $
-
-- *Variable 2 (pos 8, `d`):* From pos 8 onwards, `d` appears 2 times ($v=2$).
-  $ X_2 = 15(2 dot 2 - 1) = 15(3) = 45 $
-
-- *Variable 3 (pos 13, penultimate `a`):* From pos 13 onwards, `a` appears 2 times (at pos 13 and 14). So, $v=2$.
-  $ X_3 = 15(2 dot 2 - 1) = 15(3) = 45 $
-
-=== The Final Estimate
-A single variable $X$ is just a rough guess. To get a highly accurate and stable result, we calculate the average of all our independent estimates:
-
-$ "Average Estimate" = (X_1 + X_2 + X_3) / 3 = (75 + 45 + 45) / 3 = 55 $
-
-As we can see, our estimate of $55$ is a very solid approximation of the true $F_2$ ($59$). We achieved this by tracking only 3 elements instead of maintaining counts for the entire stream!
-
-=== Proof of Expectation
-
-Our goal is to prove that our estimator is unbiased, meaning its expected value $E[X]$ is exactly equal to the true Second Moment $F_2 = sum m_i^2$.
-
-==== *Step 1: The Expected Value over all positions*
-The probability of uniformly selecting any specific position $p$ in a stream of length $n$ is $1/n$.
-By definition, the expected value is the sum over all possible positions $p$ of the probability times the variable's value:
-$ E[X] = sum_(p=1)^n P("picking position " p) dot (n(2v_p - 1)) $
-$ E[X] = sum_(p=1)^n 1/n dot n(2v_p - 1) = sum_(p=1)^n (2v_p - 1) $
-
-==== *Step 2: The Grouping Trick*
-
-Instead of summing position by position (chronologically), we can rearrange this massive sum by grouping the terms by *distinct elements*.
-
-Let's look at element `a`, which appears $m_a=5$ times in total. If we read the stream from right to left (end to start), the values of $v$ for `a` will naturally be:
-- The last `a` seen: $v=1$
-- The second to last `a`: $v=2$
-- ...
-- The very first `a` seen: $v=5$
-
-So, for any distinct item $i$ that appears $m_i$ times, its total contribution to the sum is:
-$ sum_(j=1)^(m_i) (2j - 1) $
-Notice that $(2j - 1)$ generates the sequence of odd numbers: $1, 3, 5, 7, ...$
-
-#theorem(title: "Sum of Odd Numbers")[
-  A known mathematical property states that the sum of the first $k$ odd numbers is exactly equal to $k^2$.
-  $ sum_(j=1)^k (2j - 1) = k^2 $
-]
-
-*Step 3: The Conclusion*
-If we substitute this property back into our expectation, the contribution of element $i$ becomes exactly $m_i^2$.
-Summing this over all distinct items gives us the exact definition of the Second Moment:
-$ E[X] = sum_(i in "items") (sum_(j=1)^(m_i) (2j - 1)) = sum_(i in "items") m_i^2 = F_2 $
 
 === Higher-Order Moments
 
-We estimate $k$-th moments (for $k > 2$) using the exact same logic. The only thing that changes is the mathematical formula used for the random variable estimator.
+We can estimate $k$-th moments (for $k > 2$) using the exact same logic, with a different _estimator_ formula.
 
-*The Pattern:* Notice that our 2nd moment multiplier $(2v - 1)$ is actually just the difference between squares: $v^2 - (v - 1)^2$.
-Because of how the summation works across the stream, the sum of these differences perfectly reconstructs the total squared frequency $m^2$.
+#note[
+  The 2nd moment multiplier is just the difference between two _consecutive squares_:
+  $ v^2 - (v - 1)^2 = 2v - 1 $
+]
 
-To calculate the 3rd moment, we simply replace the difference of squares with the difference of cubes:
+To calculate the 3rd moment, we replace the difference of squares with the difference of _cubes_:
 $ v^3 - (v - 1)^3 = 3v^2 - 3v + 1 $
 
-More generally, to estimate the $k$-th moment for any $k >= 2$, we define our estimator variable $X$ by substituting the tracked count $v$ into:
-$ X = n(v^k - (v - 1)^k) $
+More generally, to estimate the $k$-th moment for any $k >= 2$, the estimator formula is:
+$ "estimator" = n(v^k - (v - 1)^k) $
 
-== Handling Infinite Streams (Reservoir Sampling)
+== Handling Infinite Streams
 
-In the AMS proof above, we assumed we knew $n$ (the total stream length) in advance, so we could pick random positions uniformly with probability $1/n$.
+In the AMS algorithm above, we assumed we knew $n$ (the total stream length) in advance, so we could pick random positions uniformly with probability $1/n$.
+
+#note[
+  - If we pick positions too early, our sample is heavily biased toward the start of the stream.
+  - If we wait too long to pick, we won't have enough variables populated to make a good estimate early on.
+]
+
 But in a real, infinite stream, $n$ grows continuously.
+The solution is to use a *dynamic* sampling method.
 
-- If we pick positions too early, our sample is heavily biased toward the start of the stream.
-- If we wait too long to pick, we won't have enough variables populated to make a good estimate early on.
+=== Reservoir Sampling
 
-*The Solution: Reservoir Sampling*
+The technique maintains a _reservoir_ of $s$ elements that are currently being tracked (the sample) and guarantees an *invariant*: at any exact moment in time, every element seen so far has the *same probability* of being in the reservoir.
 
-We maintain a fixed "reservoir" of $s$ counters (dictated by our available RAM). Reservoir Sampling guarantees a powerful mathematical *Invariant*: at any exact moment in time, every element seen so far has the exact same probability of being in the reservoir.
+#pseudocode(
+  [*If* $n <= s$ *then* _\/\/ $n$ is the current element count, $s$ is the reservoir size_],
+  indent(
+    [Add the new element to the reservoir (probability $1$)],
+  ),
+  [*Else*],
+  indent(
+    [With probability $s/(n+1)$, keep the new element by replaing a random element in the reservoir],
+  ),
+)
 
-*The Algorithm Steps:*
-
-1. *Initialization:* Store the first $s$ elements of the stream unconditionally (probability is $1$).
+1. *Initialization:* The first $s$ elements are added to the reservoir _unconditionally_, since we have enough space to store them all.
 2. *The Invariant:* At any current time $n$ (where $n > s$), every position seen so far has a uniform probability of $s/n$ of being currently inside our reservoir.
 3. *The Update Rule:* When the $(n+1)$-th element arrives:
   - We decide to *keep it* with probability $s/(n+1)$.
-  - If we decide to keep it, we must make room. We discard one of the existing $s$ counters inside the reservoir, chosen *uniformly at random*.
+  - If we decide to keep it, we must make room: we discard one of the existing $s$ counters inside the reservoir, chosen *uniformly at random*.
 
-=== Proof of Uniform Probability (By Induction)
+The invariant holds at any time $> s$.
 
-We must prove that if our invariant holds at step $n$ (the probability is $s/n$), it strictly holds after processing the new element at step $n+1$ (the probability must mathematically become $s/(n+1)$).
+#proof[
+  Proof by induction on the number of elements $n$ seen so far.
 
-To find the probability that a specific "old" element survives step $n+1$, we use the *Law of Total Probability*.
-For an element to survive, two things must happen in sequence:
-1. *Prerequisite:* It was already in the memory at step $n$ (Probability: $s/n$).
-2. *Survival:* AND it was NOT evicted during step $n+1$.
+  / Base case:
+    For $n = s$, the reservoir contains exactly the first $s$ elements.
+    Each of them has the _same_ probability of $s/n = 1$ of being in the reservoir $qed$.
 
+  / Inductive step:
+    Each element will have the same probability of being in the reservoir of $s / (n+1)$.
 
-How can it avoid eviction? There are two mutually exclusive "lucky" scenarios:
+    For an "old" element to be in the reservoir at step $n+1$:
+    - It must have been in the reservoir at previous step $n$ (probability $mr(s/n)$)
+    - It must survive the update process when the new element arrives
+      - if the new element is ignored (probability $mb(1 - s/(n+1))$), the old element survives by default
+      - if the new element is kept (probability $mp(s/(n+1))$), the old element survives if it is not the one randomly chosen for eviction (probability $mg((s-1)/s)$)
 
-- *Scenario A (The new element is ignored):* We simply don't pick the new $(n+1)$-th element to enter the reservoir. (Probability: $1 - s/(n+1)$).
+    $
+      PP("survive") &= underbrace(mr(s/n), "was in at" n) dot ( underbrace(mb(1 - s/(n+1)), "new element"\ "ignored") + underbrace(mp(s/(n+1)) dot mg((s-1)/s), "new element kept,"\ "other swapped")) \
+      &= s/n dot (1 - s/(n+1) + (s-1)/(n+1)) \
+      &= s/n dot n/(n+1) \
+      &= s/(n+1) space qed
+    $
 
-- *Scenario B (The new element is kept, but someone else is kicked):* We DO pick the new element (Prob: $s/(n+1)$), AND the random index chosen for replacement is *not* our element's index (Prob: $(s-1)/s$).
-
-Putting it all together into one equation:
-
-$
-  P("survive") = underbrace(s/n, "was in at " n) dot [ underbrace((1 - s/(n+1)), "Scenario A: new ignored") + underbrace(s/(n+1) dot (s-1)/s, "Scenario B: new kept, other swapped") ]
-$
-
-*Simplifying the math (the term in brackets):*
-Notice how the $s$ safely cancels out in Scenario B: $s/(n+1) dot (s-1)/s = (s-1)/(n+1)$.
-Now we can easily add the fractions inside the bracket:
-$ 1 - s/(n+1) + (s-1)/(n+1) = (n + 1 - s + s - 1)/(n+1) = n/(n+1) $
-
-*The Final Conclusion:*
-Multiply the prerequisite probability by our newly simplified survival probability:
-$ s/n dot n/(n+1) = s/(n+1) $
-
-The $n$ perfectly cancels out! The invariant holds. We can successfully estimate moments on infinite, unbounded streams dynamically, without ever running out of memory and without introducing sampling bias.
+    The "new" element is added with probability $s/(n+1)$, so it also has the same probability of being in the reservoir as the old elements $qed$.
+]
