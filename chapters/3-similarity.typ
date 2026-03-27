@@ -1,6 +1,6 @@
 #import "../template.typ": *
 
-= Similarity
+= Similarity <similarity>
 
 With an _equality relation_ between objects in a universe, equality is dichotomous (true or false).
 Similarity, instead, is a *spectrum* (e.g., plagiarism detection).
