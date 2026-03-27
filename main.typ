@@ -47,8 +47,9 @@
 #include "chapters/6-recommendation.typ"
 
 #show: part.with("Machine Learning")
-#include "chapters/6-clustering.typ"
-#include "chapters/7-regression.typ"
+#todo
+#include "chapters/7-clustering.typ"
+#include "chapters/8-regression.typ"
 #include "chapters/9-deep-learning.typ"
 #include "chapters/10-gradient-boosting.typ"
 #include "chapters/11-dimensionality-reduction.typ"
