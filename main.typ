@@ -41,6 +41,9 @@
 #show: part.with("Theory")
 #include "chapters/1-hdfs-mapreduce.typ"
 #include "chapters/2-link-analysis.typ"
+#include "chapters/3-similarity.typ"
+#include "chapters/4-frequent-itemsets.typ"
+#include "chapters/5-data-streams.typ"
 
 
 
