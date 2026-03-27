@@ -73,9 +73,9 @@ The system works with a limited amount of RAM and a storage used for archival pu
   - _Push_ (stream processor): the data is continuously pushed into the system as it arrives, and the system must process it on the fly.
 ]
 
-Processing streams involve a *summarization* of the stream data in some way.
+Processing streams involves a *summarization* of the stream data in some way.
 Instead of trying to store every single piece of data, summarization consists of keeping continuously _updated statistics_ or highly compact data structures in Main Memory (RAM).
-Summarization can be also approached by looking at only a _fixed length window_ consisting of the last $n$ elements for some large $n$, querying the window only when necessary.
+Summarization can also be approached by looking at only a _fixed length window_ consisting of the last $n$ elements for some large $n$, querying the window only when necessary.
 
 #example[
   Streams are usually dumped into huge storage (e.g. Amazon S3).
@@ -87,7 +87,7 @@ Summarization can be also approached by looking at only a _fixed length window_ 
 ]
 
 #warning[
-  From now on, all the proposed solutions does *not* involve loading past history from storage.
+  From now on, all the proposed solutions do *not* involve loading past history from storage.
 ]
 
 There are two primary ways queries are asked on streams:
@@ -122,7 +122,7 @@ There are two primary ways queries are asked on streams:
 
     If logins are elements, we maintain a sliding window of all logins in the last day as a relation `Logins(name, time)`. The ad-hoc SQL query is:
     `SELECT COUNT(DISTINCT(name)) FROM Logins WHERE time >= t;`.
-    The sliding windows drops old logins as time passes, so we only keep the relevant data for the last day in RAM.
+    The sliding window drops old logins as time passes, so we only keep the relevant data for the last day in RAM.
 ]
 
 
@@ -142,7 +142,7 @@ The sample should maintain the same _statistical properties_ as the original str
   In statistics, sampling is the selection of a _subset_ of individuals within a population to estimate characteristics of the whole population.
 ]
 
-Naively, we could sample the stream by keeping an element with a fixed probability  and discarding it otherwise.
+Naively, we could sample the stream by keeping an element with a fixed probability and discarding it otherwise.
 However, this approach can lead to *distortions* in the sample.
 
 #example[
@@ -171,7 +171,7 @@ To fix the distortion, we must sample by a _unifying property_, (e.g., sample us
 
 Another problem arises: storing in memory all the IDs of the users we want to sample could *saturate* our RAM.
 
-The Solution is hashing: instead of storing IDs, we use a *hash function* $h(x)$ to map each User ID into one of $B$ buckets.
+The solution is hashing: instead of storing IDs, we use a *hash function* $h(x)$ to map each user ID into one of $B$ buckets.
 Then we only keep events from users whose hash falls into a specific subset of buckets.
 This approach has two key advantages:
 - A hash function is _deterministic_: the same User ID will always hash to the exact same bucket.
@@ -257,11 +257,11 @@ The intuition is to exploit the randomness of *hash* functions, specifically:
 - _Determinism_: the same element always produces the same hash value
 - _Uniform distribution_: hash values are uniformly distributed across the binary space
 
-We look at the binary representation of the hash values and focus on the *tail length* ($R$): the number of _trailing_ zeroes.
+We look at the binary representation of the hash values and focus on the *tail length* ($R$): the number of _trailing_ zeros.
 For example, `00110` has $R = 1$, while `01000` has $R = 3$.
 
 #informally[
-  If we see a hash with a long tail of zeroes (e.g., `000`), it is a very rare event (probability $1/8$).
+  If we see a hash with a long tail of zeros (e.g., `000`), it is a very rare event (probability $1/8$).
   So we estimate that we must have seen about $8$ distinct elements to encounter such a rare hash.
 ]
 
@@ -296,7 +296,7 @@ Because of this, if the absolute longest tail we recorded during the stream is $
 
 #warning[
   The *outlier* Problem: This basic method is extremely sensitive to outliers.
-  One single "lucky" hash with 20 trailing zeroes will completely ruin the estimate even if we have only 100 distinct elements in the stream.
+  One single "lucky" hash with 20 trailing zeros will completely ruin the estimate even if we have only 100 distinct elements in the stream.
 ]
 
 The solution is to use multiple independent hash functions and take the *median* (not influenced by outliers) of their estimates to get a more stable and accurate result.
@@ -354,14 +354,14 @@ For each selected variable $X$, we track two things:
 2. The *number of occurrences* $v$ of that element from that position onwards until the end of the stream.
 
 #warning[
-  Because the stream is not saved (and cannot be accessed like an array), these variables needs to be defined beforehand.
+  Because the stream is not saved (and cannot be accessed like an array), these variables need to be defined beforehand.
 ]
 
 The *estimator formula* for second moment is then applied to the counters $v$ of each variable $X$, where $n$ is the total stream length:
 $ "estimate" = n (2v - 1) $
 
 #warning[
-  The algorithms needs to know the total stream length $n$ in advance to pick random positions uniformly and to apply the estimator formula correctly.
+  The algorithm needs to know the total stream length $n$ in advance to pick random positions uniformly and to apply the estimator formula correctly.
 ]
 
 The second moment is estimated by taking the *average* of all the $k$ independent variables $X$ we tracked:
@@ -426,9 +426,9 @@ $ E[X] = F_2 = sum m_i^2 $
     $ (2 v_a_1 - 1) + (2 v_a_2 - 1) + (2 v_b_1 - 1) + (2 v_b_2 - 1) $
   ]
 
-  Reading the $v_i$, which counts the occurrences of the element from the chosen position to the end of the stream, it goes form $1$ to the actual frequency of that element $m_i$: 1, 2, ..., $m_i$.
+  Reading the $v_i$, which count the occurrences of the element from the chosen position to the end of the stream, they go from $1$ to the actual frequency of that element $m_i$: 1, 2, ..., $m_i$.
 
-  Each of this values of $v$ contributes to the sum with a multiplier of $(2v - 1)$, which generates the sequence of odd numbers: $1, 3, 5, 7, ..., (2m_i - 1)$.
+  Each of these values of $v$ contributes to the sum with a multiplier of $(2v - 1)$, which generates the sequence of odd numbers: $1, 3, 5, 7, ..., (2m_i - 1)$.
 
   #theorem(title: "Lemma: Sum of Odd Numbers")[
     The sum of the first $k$ odd numbers is exactly equal to $k^2$.
@@ -486,7 +486,7 @@ The technique maintains a _reservoir_ of $s$ elements that are currently being t
   ),
   [*Else*],
   indent(
-    [With probability $s/(n+1)$, keep the new element by replaing a random element in the reservoir],
+    [With probability $s/(n+1)$, keep the new element by replacing a random element in the reservoir],
   ),
 )
 
@@ -506,7 +506,7 @@ The invariant holds at any time $> s$.
     Each of them has the _same_ probability of $s/n = 1$ of being in the reservoir $qed$.
 
   / Inductive step:
-    Each element will have the same probability of being in the reservoir of $s / (n+1)$.
+    Each element will have the same probability $s / (n+1)$ of being in the reservoir.
 
     For an "old" element to be in the reservoir at step $n+1$:
     - It must have been in the reservoir at previous step $n$ (probability $mr(s/n)$)
