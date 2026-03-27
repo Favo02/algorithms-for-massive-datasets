@@ -26,9 +26,9 @@ Two big approaches to recommendation systems exist:
 - *Content-based approach*: Suggestions based on the *actual content*.
   Users get recommendations based on their explicit interest.
   We need to know both the *interest* of a user and a *description* of each item.
-- *Collaborative filtering approach*: The system does *not know anything* on the content of items or interests of a user.
+- *Collaborative filtering approach*: The system does *not know anything* about the content of items or interests of a user.
   Recommendations are based on the *similarity* between users.
-  A user gets recommended the items a similar user interacted with.
+  A user gets recommended items that similar users interacted with.
 
 #example[
   *Content-based:* A user who rates highly romantic comedies receives recommendations for other romantic comedies with similar actors, directors, or themes.
@@ -51,12 +51,12 @@ The entries of the matrix could be binary (like / don't like), an integer scale 
 The goal of the system is to *predict* the *missing values* of that matrix.
 
 #note[
-  Most of the times, it could _not_ be necessary to fill the _whole matrix_, but to find only some entries that are likely high and recommend these ones.
+  Most of the time, it is _not_ necessary to fill the _whole matrix_, but only to find some entries that are likely to be high and recommend those.
 ]
 
 Without that matrix, recommendations are almost impossible.
 Again, two main approaches to *populate* that matrix exist:
-- Ask explicitly users to *rate items* (e.g. rating a movie), better quality (the rating has a scale) but less effective as not all users do that.
+- Ask users explicitly to *rate items* (e.g. rating a movie), better quality (the rating has a scale) but less effective as not all users do that.
 - Make *inference* from users' interactions (e.g. movies the user clicked on or watched the trailer), less quality (the value is boolean) but applicable to all users.
 
 == Content-based Approach
@@ -76,14 +76,14 @@ These profiles can be defined as vectors, so that the *cosine similarity* betwee
 
 === Building Items Profile
 
-Most of the times, items have intrinsic *boolean* properties that can be used for recommendations.
+Most of the time, items have intrinsic *boolean* properties that can be used for recommendations.
 
 #example[
   Movies can be represented by a huge vector of all actors, where each entry is binary, describing if an actor appeared in that movie.
   The same thing can be done for directors.
 ]
 
-Another class of features are the *numerical* characteristics.
+Another class of features is the *numerical* characteristics.
 It is completely fine to put these in the vector, but these numerical values need to be *scaled* so neither the boolean nor the numerical features dominate.
 The scaling factor depends on the context and the semantics of the numerical value.
 
@@ -107,7 +107,7 @@ What about documents?
 An idea could be to identify a document by its *most significant words*, the rarest words.
 First, we eliminate *stop words*: the most common words (e.g. "and", "or", "the"), which carry no topical information.
 For the remaining words, we need to differentiate between rare _meaningless_ words (like "notwithstanding") and rare _meaningful_ words.
-The observation is that rare meaningful words are likely to appear multiple times in the same document, while rare _meaningless_ word not.
+The observation is that rare meaningful words are likely to appear multiple times in the same document, while rare _meaningless_ words do not.
 
 #example[
   Both _albeit_ and _offside_ are rare words.
@@ -141,7 +141,7 @@ One way to achieve that is to *correlate* the data from the utility matrix with 
 This technique heavily depends on the context and the semantics.
 
 #example[
-  If all the information we have for a user is which movie he clicked on (*boolean*), then we can populate its profile putting at $1$ all the actors that play in any movie he clicked on.
+  If all the information we have for a user is which movie they clicked on (*boolean*), we can populate their profile by setting to $1$ all the actors in any movie they clicked on.
 ]
 
 #example[
@@ -209,7 +209,7 @@ This technique heavily depends on the context and the semantics.
     $
     $ cos(theta) = 1.5 / (sqrt(4.5) dot 1) = 1.5 / 2.12 approx 0.707 $
 
-    A large positive cosine fraction (angle $approx 45 degree$) indicates a small cosine distance. Movie 3 is a *good recommendation* because it features an actor the user strongly likes, and none that they dislike.
+    A large positive cosine fraction (angle $approx 45°$) indicates a small cosine distance. Movie 3 is a *good recommendation* because it features an actor the user strongly likes, and none that they dislike.
 ]
 
 #example(title: "Complete Example: Document Recommendations")[
@@ -237,7 +237,7 @@ This technique heavily depends on the context and the semantics.
 == Collaborative Filtering
 
 #informally[
-  Instead of finding similar user-item pairs based on their content and preferences, the idea is to find _similar users_ and recommend each other the items they interact with.
+  Instead of finding similar user-item pairs based on their content and preferences, the idea is to find _similar users_ and recommend items to each other based on what they interact with.
 ]
 
 Similar users are found by looking at the _utility matrix_.
@@ -261,7 +261,7 @@ Different similarity measures can be applied:
   #example[
     When vectors represent the number of times a user interacted with items, the cosine distance is appropriate because it captures the similarity in interaction patterns regardless of the absolute number of interactions.
 
-    E.g., a user that interacted 9 times with Sport and 1 time with Politics (vector [9,1]) is identical to a user that interacted 90 times with Sport and 10 times with Politics (vector [90,10]), because the _magnitude_ does not matter.
+    E.g., a user who interacted 9 times with Sport and 1 time with Politics (vector [9,1]) is similar to a user who interacted 90 times with Sport and 10 times with Politics (vector [90,10]), because the _magnitude_ does not matter.
   ]
 
 If the matrix is too big, it can be difficult to compute the similarity between all pairs of users.
