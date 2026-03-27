@@ -38,12 +38,16 @@
   // figure-supplement: auto,
 )
 
-#show: part.with("Theory")
+#show: part.with("Big Data")
 #include "chapters/1-hdfs-mapreduce.typ"
 #include "chapters/2-link-analysis.typ"
 #include "chapters/3-similarity.typ"
 #include "chapters/4-frequent-itemsets.typ"
 #include "chapters/5-data-streams.typ"
+#include "chapters/6-recommendation.typ"
+
+
+#show: part.with("Machine Learning")
 
 #show: part.with("Implementation", chapters-numbering: "A.1.", reset-chapters: true)
 
