@@ -2,6 +2,12 @@
 
 = Regression
 
+#rect(stroke: 2pt + red, fill: red.transparentize(70%))[
+  #todo
+
+  Contribute to open #link("https://github.com/Favo02/algorithms-for-massive-datasets/pull/11")[pull request \#11] approving or improving this chapter.
+]
+
 #informally()[
   In supervised learning, we speak of *regression* when the labels associated with our objects are numbers (typically continuous).
 ]

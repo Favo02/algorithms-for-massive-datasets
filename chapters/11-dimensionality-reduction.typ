@@ -2,6 +2,12 @@
 
 = Dimensionality Reduction & PCA
 
+#rect(stroke: 2pt + red, fill: red.transparentize(70%))[
+  #todo
+
+  Contribute to open #link("https://github.com/Favo02/algorithms-for-massive-datasets/pull/16")[pull request \#16] approving or improving this chapter.
+]
+
 When dealing with data having a lot of dimensions, we often want to reduce them.
 Dimensionality reduction maps data from a high-dimensional Data Space $RR^d$ to a lower-dimensional Feature Space $RR^(d')$.
 

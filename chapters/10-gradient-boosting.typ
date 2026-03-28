@@ -2,6 +2,12 @@
 
 = Gradient Boosting
 
+#rect(stroke: 2pt + red, fill: red.transparentize(70%))[
+  #todo
+
+  Contribute to open #link("https://github.com/Favo02/algorithms-for-massive-datasets/pull/15")[pull request \#15] approving or improving this chapter.
+]
+
 #note[
   This topic (Gradient Boosting) is not strictly related to Big Data infrastructure; it is purely Machine Learning.
   It is taught in this course as there are no other courses in the curriculum that cover this technique.

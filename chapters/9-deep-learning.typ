@@ -2,6 +2,12 @@
 
 = Deep Learning
 
+#rect(stroke: 2pt + red, fill: red.transparentize(70%))[
+  #todo
+
+  Contribute to open #link("https://github.com/Favo02/algorithms-for-massive-datasets/pull/14")[pull request \#14] approving or improving this chapter.
+]
+
 == Neural Network
 
 Complex aggregation of networks, inspired by the human brain.

@@ -2,6 +2,12 @@
 
 = Clustering
 
+#rect(stroke: 2pt + red, fill: red.transparentize(70%))[
+  #todo
+
+  Contribute to open #link("https://github.com/Favo02/algorithms-for-massive-datasets/pull/10")[pull request \#10] approving or improving this chapter.
+]
+
 Clustering is the process of examining a collection of "points" and grouping them into "clusters" according to some distance measure.
 The goal is that points in the same cluster have a small distance from one another, while points in different clusters are at a large distance from one another.
 It is a form of *Unsupervised Learning*, meaning it works with observations that are not paired with labels.

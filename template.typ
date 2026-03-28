@@ -204,7 +204,7 @@
 
 #let todo = {
   emoji.warning
-  [*TODO: this section is pending confirmation, it may be incorrect or incomplete*]
+  [*TODO: this section is still work in progress, it may be incorrect or incomplete*]
   emoji.warning
 }
 
