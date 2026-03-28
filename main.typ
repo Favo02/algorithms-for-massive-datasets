@@ -49,6 +49,11 @@
 
 #show: part.with("Machine Learning")
 
+
+
+
+#include "chapters/7-regression.typ"
+
 #show: part.with("Implementation", chapters-numbering: "A.1.", reset-chapters: true)
 
 #include "chapters/a-spark.typ"
