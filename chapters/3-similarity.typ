@@ -747,7 +747,7 @@ $
 
 // TODO: @alsacchi draw this in typst
 #figure(
-  image("../content/03-d1d2p1p2-sensitive-function.png", width: 70%),
+  image("../assets/03-d1d2p1p2-sensitive-function.png", width: 70%),
   caption: [Behaviour of $(d_1, d_2, p_1, p_2)$-sensitive function],
 )
 
