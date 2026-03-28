@@ -49,6 +49,10 @@
 
 #show: part.with("Machine Learning")
 
+
+
+#include "chapters/6-clustering.typ"
+
 #show: part.with("Implementation", chapters-numbering: "A.1.", reset-chapters: true)
 
 #include "chapters/a-spark.typ"
