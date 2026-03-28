@@ -1,11 +1,7 @@
 # Handbook for Algorithms for Massive Datasets
 
-> [!WARNING]
-> This repository contains the notes for the course.
-> Our projects are in separate repos: [Luca](https://github.com/Favo02/recommendation-system), [Giacomo](https://github.com/comitanigiacomo/Comitani_85673A_Stream_Analysis).
-
 > [!CAUTION]
-> The notes are still unfinished (and will probably remain like that).
+> The notes are still unfinished (and will probably remain like that as we both passed the exam).
 > All topics have an open Pull Request, that must be reviewed before merging.
 >
 > For a complete _temporary_ PDF, check [this](https://github.com/Favo02/algorithms-for-massive-datasets/pull/17) PR.
@@ -18,8 +14,9 @@ These notes are open source: [github.com/Favo02/algorithms-for-massive-datasets]
 
 Contributions and corrections are welcome via Issues or Pull Requests.
 
-> [!CAUTION]
-> Check `TODO` comments, open Issues and Pull Requests.
+> [!NOTE]
+> This repository contains the notes for the course.
+> Our projects are in separate repos: [Luca](https://github.com/Favo02/recommendation-system), [Giacomo](https://github.com/comitanigiacomo/Comitani_85673A_Stream_Analysis).
 
 ## Compiled PDF
 
