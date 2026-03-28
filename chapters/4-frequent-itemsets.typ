@@ -746,8 +746,8 @@ But what about FN?
     $
       "Supp"(I) & = sum_c "Supp"_(c)(I) \
                 & < sum_c p s \
-                & = k dot p s \
-                & = s
+                & < k dot p s \
+                & < s
     $
 
     Because $I$ is frequent, it must be $"Supp"(I) >= s$, which is a contradiction $qed$.

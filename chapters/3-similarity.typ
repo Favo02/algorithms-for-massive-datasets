@@ -685,7 +685,7 @@ The *cosine distance* can be used on vectors with a common origin (directions in
 The resulting distance will be in the range 0 to 180 degrees regardless of the dimension of the vector.
 
 Given two vectors $x$ and $y$, the cosine distance is defined exploiting the dot product and normalization:
-$ d(x, y) = theta_(x y) = arccos (x y)/(||x|| ||y||) $
+$ d(x, y) = theta_(x y) = (x y)/(||x|| ||y||) $
 
 #warning[
   Two vectors with the same direction but different *magnitude* are considered the same.
