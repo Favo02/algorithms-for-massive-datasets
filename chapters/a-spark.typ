@@ -2,72 +2,60 @@
 
 = Spark
 
-We will not use Hadoop (which offers both a file system and a computing framework with MapReduce), but a more modern version: Spark.
+A modern framework for big data processing is Spark, it does not provide a distributed file system, but only the *processing* framework.
+Storage needs to be handled by another technology (typically _Hadoop_).
+Main Spark concepts are:
 
-Spark is essentially a workflow system with additional features, such as a more efficient way of coping with failures and grouping tasks among compute nodes. The central data abstraction of Spark is called the Resilient Distributed Dataset (RDD).
+/ Resilient Distributed Datasets (RDDs): the main *data* abstraction in Spark, representing a distributed collection of objects (with the same format) that can be processed in parallel.
+  An RDD is partitioned in *chunks* that may be held at different compute nodes.
+  RDDs are *immutable*, meaning that once created, they cannot be modified. Instead, *transformations* on RDDs produce new RDDs.
 
-The adjective "resilient" symbolizes the capacity to recover from the loss of any or all chunks of an RDD.
+  #note[
+    The adjective "resilient" symbolizes the capacity to recover from the loss of any or all chunks of an RDD.
+  ]
 
-#note[ An RDD is a collection of objects of the same type, similar to the files of key-value pairs used in MapReduce systems. ]
+  #note[
+    Spark does *not* enforce key-value pairs as the data model for RDDs, but many operations (like reduceByKey) are designed for pair RDDs.
+  ]
 
-#warning[ RDDs are distributed in the sense that an RDD is normally broken into chunks that may be held at different compute nodes. ]
+  #warning[
+    An RDD is *not* persistent: it is lost as soon as the machine turns off.
+    Results must be stored in a distributed filesystem.
+  ]
 
-#warning[ Spark does not offer a distributed file system; it only provides the processing framework. Storage needs to be handled by another technology (typically Hadoop). ]
+/ Workflow: a sequence of *lazy transformations* and *actions* on RDDs that define a Spark program.
 
-#note[ We refer to the machine that sends commands to Spark and displays output as the driver. This machine is not meant to handle big data itself. ]
+  #warning[
+    Each operation on an RDD is lazy, meaning that it does not immediately compute a result. Instead, it builds up a graph of transformations that is executed when an action (collect, count, etc.) is called.
 
-Basically, a Spark program is a sequence of transformations (operations) that modify an RDD and return a new RDD.
+    Calling multiple times an action on the same RDD will trigger the execution of the entire graph of transformations each time, unless the RDD is *cached*.
+  ]
 
-There is also another type of operation called actions. These take an RDD and either save it to the surrounding filesystem or produce an output to pass back to the application that called the Spark program.
+/ Driver: the machine that runs the main program and coordinates the execution of tasks across the cluster.
 
-#warning[ There is no restriction on the type of elements that comprise an RDD. ]
+The full #link("https://spark.apache.org/docs/latest/api/python/reference/pyspark.html")[RDD Spark API] is large, the essential operations are:
 
-#warning[ An RDD is not persistent; it is lost as soon as the machine turns off. Results must be stored in a distributed filesystem. ]
+- *RDD creation*:
+  - *parallelize*: creates an RDD from an in memory collection on the driver.
+  - *textFile*: creates an RDD from a text file (typically in distributed storage).
 
-While there are many possible operations in a Spark program, we can list the most essential ones:
+- *local transformations* (no shuffle, usually faster):
+  - *map*: applies a function to each element, producing exactly one output element per input element.
+  - *flatMap*: like `map`, but each input element can produce zero, one, or many output elements.
+  - *filter*: keeps only elements that satisfy a predicate.
+  - *union*: combines two RDDs into one RDD, concatenating their elements.
 
-- *parallelize*: transform an object that lives in RAM to a RDD
+- *shuffle transformations* (network communication, usually slower):
+  - *reduceByKey*: for pair RDDs `(K, V)`, aggregates values per key using an associative and commutative function.
+  - *groupByKey*: for pair RDDs `(K, V)`, groups all values for each key into `(K, Iterable[V])`.
+  - *join*: for pair RDDs, joins by key and returns `(K, (V1, V2))`.
+  - *distinct*: removes duplicates.
 
-- *textFile*: transform a file into a RDD
+- *persistence*:
+  - *cache*: asks Spark to persist the RDD instead of recomputing it every time it is needed (usually in memory, possibly with fallback to disk depending on storage level).
 
-- *map*: takes a parameter that is a function, and applies it to avery element of an RDD, producing an RDD. note that respect of the map reduce, in here a map function can apply to any object type, but it produced exactly one object as result.
-
-- *flatMap*: like map, but flatten the result (if multi-dimensional).
-  Is the analogous to the function Map of MapReduce, but without the requirement that all types be key-value pairs.
-
-- *filter*: select only elements that satisfy a predicate.
-  Takes as a parameter a predicate that applies to the type of objects in the input RDD, and returns `true` or `false` for each object.
-  The final output consists of only those objects for which the filter function returns `true`
-
-- *reduceByKey*: reduction like in functional programming.
-  Is an action.
-  Takes as input a function which takes two elements of some type `T` and return another element of type `T`.
-  The action is applied repeatedly to each pairs of consecutive elements until it remains a single element.
-  The operation should be _commutative_ and _associative_.
-  It does both _shuffling_ and _reducing_ steps.
-  Can be applied only if the working set is composed of pairs.
-
-- *groupByKey*: groups values by key without aggregating them.
-  Can be applied only if the working set is composed of pairs.
-  Takes in input an RDD whose type is a key-value pairs.
-  Produces key-value pairs where the value is a list of all values for that key.
-
-- *join*: joins two RDDs by key. The type of each RDD must be a key-value pair, and the key types of both relations must be the same.
-  Returns pairs of (key, (value1, value2)).
-
-- *count*: count the total number of elements in the RDD.
-  This is an action that returns a value to the driver.
-
-- *collect*: bring the data from the RDD into the RAM of the driver _(use with caution!)_
-
-- *take*: like collect, but instead of getting all the data, only selects as many random records as specified (safe alternative to `collect`)
-
-- *distinct*: remove duplicate elements from the RDD
-
-- *union*: combine two RDDs into a single RDD
-
-- *cache*: cache the RDD, keeping it in the RAM instead of distributing over the whole system (applied only if possible)
-
-- *saveAsTextFile*: save the RDD as a text file in the distributed filesystem.
-  Each element is written on a separate line.
-  This is the standard way to persist results beyond the Spark session.
+- *actions* (trigger execution and return results or write output):
+  - *count*: returns the number of elements to the driver.
+  - *collect*: returns all elements to the driver memory (use with caution).
+  - *take*: returns the first `n` elements to the driver (safer than `collect` for inspection).
+  - *saveAsTextFile*: writes the RDD to text files in distributed storage (one element per line).
